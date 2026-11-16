@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>LowBid · ዝቅ ጨረታ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;800&family=Noto+Sans+Ethiopic:wght@400;600;800&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
+  :root { --ink:#0b0d12; --card:#12161f; --line:rgba(255,255,255,.09); --gold:#e8b84b; --mute:#8d96a8; }
+  body { background: var(--ink); color:#eef0f5; font-family:'Plus Jakarta Sans','Noto Sans Ethiopic',system-ui,sans-serif;
+         padding-bottom: env(safe-area-inset-bottom,0px);
+         background-image: radial-gradient(60rem 28rem at 85% -10%, rgba(232,184,75,.13), transparent 60%), radial-gradient(50rem 26rem at -10% 10%, rgba(47,179,109,.10), transparent 60%); background-attachment: fixed; }
+  .disp { font-family:'Fraunces','Noto Sans Ethiopic',serif; letter-spacing:-.01em; }
+  .gold { color: var(--gold); } .mute { color: var(--mute); }
+  .glass { background: rgba(11,13,18,.82); backdrop-filter: blur(14px); border-bottom:1px solid var(--line); }
+  .tri { height:3px; background: linear-gradient(90deg,#2fb36d 0 33.3%,#f2c230 0 66.6%,#e5484d 0); }
+  .chip { background: rgba(255,255,255,.05); border:1px solid var(--line); border-radius:12px; padding:6px 11px; font-size:13px; }
+  .inp { background: rgba(255,255,255,.05); border:1px solid var(--line); border-radius:12px; padding:9px 12px; font-size:15px; color:#fff; outline:none; }
+  .inp:focus { border-color: var(--gold); box-shadow:0 0 0 3px rgba(232,184,75,.18); }
+  .inp option { background:#12161f; }
+  .cta { background: linear-gradient(135deg,#f3cd6b,#d99a1e); color:#1a1405; font-weight:800; border-radius:12px; padding:0 18px; transition:transform .12s, filter .2s; }
+  .cta:hover { filter:brightness(1.08); } .cta:active { transform:scale(.96); } .cta:disabled, .pk:disabled { opacity:.35; cursor:not-allowed; }
+  .lang button { padding:5px 10px; font-size:12px; font-weight:700; border-radius:10px; color:var(--mute); }
+  .lang button.on { background: var(--gold); color:#1a1405; }
+  .tk { position:relative; background: linear-gradient(180deg, #151a25, #10131b); border:1px solid var(--line); border-radius:22px; overflow:hidden; transition: transform .25s, border-color .25s; }
+  .tk:hover { transform: translateY(-3px); border-color: hsl(var(--h) 70% 55% / .6); }
+  .pat { position:relative; height:104px; display:flex; align-items:center; padding:0 18px; border-bottom:2px dashed rgba(255,255,255,.14);
+         background: repeating-linear-gradient(45deg, hsl(var(--h) 85% 70% / .14) 0 1px, transparent 1px 14px), repeating-linear-gradient(-45deg, hsl(var(--h) 85% 70% / .14) 0 1px, transparent 1px 14px), linear-gradient(135deg, hsl(var(--h) 55% 22%), hsl(var(--h) 60% 10%)); }
+  .em { font-size:46px; filter: drop-shadow(0 6px 14px rgba(0,0,0,.45)); }
+  .ring { --p:0; --rc: var(--gold); margin-left:auto; width:70px; height:70px; border-radius:50%; display:grid; place-items:center; position:relative;
+          background: conic-gradient(var(--rc) calc(var(--p) * 1%), rgba(255,255,255,.12) 0); transition: --p .9s cubic-bezier(.2,.8,.2,1); }
+  .ring::before { content:''; position:absolute; inset:7px; border-radius:50%; background:#0d1017; }
+  .ring b { position:relative; font-size:15px; font-weight:800; }
+  .badge { position:absolute; top:12px; left:16px; font-size:10px; letter-spacing:.08em; font-weight:800; padding:3px 9px; border-radius:99px; }
+  .b-live { background:rgba(47,179,109,.2); color:#6ee7a8; } .b-lock { background:rgba(242,194,48,.2); color:#f6d56a; } .b-end { background:rgba(229,72,77,.2); color:#ff8d90; }
+  .bar { height:10px; border-radius:99px; background:rgba(255,255,255,.08); overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:99px; width:0; transition: width .9s cubic-bezier(.2,.8,.2,1), background .4s;
+           background-image: repeating-linear-gradient(110deg, rgba(255,255,255,.22) 0 6px, transparent 6px 12px); background-blend-mode: overlay; }
+  .st { border-radius:14px; padding:10px 12px; font-size:13px; font-weight:700; text-align:center; border:1px solid; }
+  .st-win { background:rgba(47,179,109,.16); color:#7bf0b2; border-color:rgba(47,179,109,.55); box-shadow:0 0 28px rgba(47,179,109,.25); }
+  .st-clash { background:rgba(242,194,48,.14); color:#f8da72; border-color:rgba(242,194,48,.55); box-shadow:0 0 28px rgba(242,194,48,.2); }
+  .st-uni { background:rgba(56,152,236,.14); color:#8cc8ff; border-color:rgba(56,152,236,.5); }
+  .st-closed { background:rgba(229,72,77,.15); color:#ff9a9d; border-color:rgba(229,72,77,.55); box-shadow:0 0 28px rgba(229,72,77,.2); }
+  .seg { display:flex; padding:4px; gap:4px; background:rgba(255,255,255,.05); border-radius:14px; }
+  .seg button { flex:1; font-size:12px; font-weight:700; padding:8px 4px; border-radius:10px; color:var(--mute); transition:.2s; }
+  .seg button.on { background:#232a39; color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.35); }
+  .pk { background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:14px; padding:10px 0; text-align:center; transition:.15s; }
+  .pk:hover:not(:disabled) { border-color:var(--gold); background:rgba(232,184,75,.1); } .pk:active:not(:disabled) { transform:scale(.95); }
+  .pk b { display:block; font-size:20px; font-weight:800; } .pk small { font-size:10px; color:var(--mute); }
+  @keyframes flash { 0% { transform:scale(.95); opacity:.3; } 55% { transform:scale(1.04); opacity:1; } 100% { transform:scale(1); } }
+  .flash { animation: flash .55s ease-out; }
+  .step { display:flex; align-items:center; gap:10px; font-size:13px; color:#c7cddb; }
+  .step span { width:26px; height:26px; flex:none; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:12px; color:#1a1405; background:var(--gold); }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="sticky top-0 z-30 glass">
+  <div class="tri"></div>
+  <div class="max-w-6xl mx-auto px-3 py-2.5 flex items-center gap-2 flex-wrap">
+    <div class="flex items-center gap-2.5 mr-auto">
+      <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="none" stroke="#e8b84b" stroke-width="2"/><path d="M20 8v14M13 17l7 8 7-8" fill="none" stroke="#e8b84b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="31" r="2.6" fill="#e8b84b"/></svg>
+      <div class="leading-tight"><div class="disp font-extrabold text-lg" data-i18n="brand"></div>
+        <div class="flex items-center gap-1.5 text-[11px] mute"><span id="connDot" class="w-2 h-2 rounded-full bg-red-500"></span><span id="connText"></span></div></div>
+    </div>
+    <div class="lang flex chip !p-1"><button id="langEn" class="on">EN</button><button id="langAm">አማ</button></div>
+    <div id="authBits" class="hidden items-center gap-2 flex-wrap">
+      <span id="whoami" class="chip text-xs mute"></span>
+      <div class="chip flex items-center gap-1.5"><span class="mute text-xs" data-i18n="wallet"></span><b id="wallet" class="gold tabular-nums text-base">0.00</b><span class="mute text-xs" data-i18n="etb"></span></div>
+      <button id="depositBtn" class="cta !py-2 text-sm" data-i18n="deposit"></button>
+      <button id="logoutBtn" class="chip text-xs font-bold" data-i18n="logout"></button>
+    </div>
+  </div>
+</header>
+
+<div id="login" class="fixed inset-0 z-[25] hidden items-start justify-center p-4 pt-28" style="background:rgba(11,13,18,.94);backdrop-filter:blur(8px)">
+  <div class="tk w-full max-w-sm p-6 space-y-4">
+    <h2 class="disp text-3xl font-extrabold" data-i18n="loginTitle"></h2>
+    <p class="text-sm mute" data-i18n="loginSub"></p>
+    <div id="stepPhone" class="space-y-3">
+      <input id="phoneIn" type="tel" inputmode="tel" autocomplete="tel" data-ph="phPhone" class="inp w-full">
+      <button id="sendBtn" class="cta w-full py-3" data-i18n="sendCode"></button>
+    </div>
+    <div id="stepCode" class="hidden space-y-3">
+      <p id="codeMsg" class="text-sm mute"></p>
+      <input id="codeIn" inputmode="numeric" maxlength="8" autocomplete="one-time-code" class="inp w-full text-center text-2xl tracking-[.4em]">
+      <button id="verifyBtn2" class="cta w-full py-3" data-i18n="verifyLogin"></button>
+      <button id="backBtn" class="text-xs mute underline w-full" data-i18n="changeNumber"></button>
+    </div>
+    <p id="loginErr" class="hidden text-sm text-rose-400"></p>
+  </div>
+</div>
+
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 top-24 z-50 hidden px-4 py-2.5 rounded-2xl text-sm font-bold shadow-2xl max-w-[92vw] text-center"></div>
+
+<section class="max-w-6xl mx-auto px-3 pt-7 pb-2">
+  <h1 class="disp text-3xl sm:text-5xl font-extrabold leading-tight max-w-2xl" data-i18n="tag"></h1>
+  <div class="mt-4 flex flex-wrap gap-x-7 gap-y-2">
+    <div class="step"><span>1</span><i class="not-italic" data-i18n="how1"></i></div>
+    <div class="step"><span>2</span><i class="not-italic" data-i18n="how2"></i></div>
+    <div class="step"><span>3</span><i class="not-italic" data-i18n="how3"></i></div>
+  </div>
+</section>
+
+<main class="max-w-6xl mx-auto px-3 py-5">
+  <div id="grid" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
+  <p id="empty" class="text-center mute py-16" data-i18n="waiting"></p>
+</main>
+<footer class="text-center text-xs mute pb-8" data-i18n="responsible"></footer>
+
+<script>
+(() => {
+  const API = location.protocol.startsWith('http') ? '' : 'http://localhost:8000';
+  const WS_BASE = location.protocol.startsWith('http') ? (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host : 'ws://localhost:8000';
+  const BID_MAX = 100000;
+
+  // ---------- i18n (English / Amharic)
+  const I = {
+    en: {
+      brand: 'LowBid', tag: 'Bid low. Stay unique. Win big.', how1: 'Pick your numbers', how2: 'Lowest number nobody else picked wins', how3: 'Room fills, winner revealed',
+      waiting: 'Waiting for live rooms…', responsible: '18+ only. Play responsibly.', connecting: 'Connecting…', live: 'Live', reconnecting: 'Reconnecting…',
+      wallet: 'Wallet', etb: 'ETB', deposit: '+ Deposit', verifyMsg: 'This phone is not verified.', verifyBtn: 'Verify with OTP', unverifiedTag: 'unverified',
+      tabSingle: 'Single Target Bid', tabPack: 'Multi-Bid Rapid Pack', bid: 'Bid', phSingle: 'Your number, e.g. 17', startAt: 'Start at', consecutive: 'Consecutive', random: 'Random',
+      packHint: 'Tap a pack to buy instantly. Consecutive packs start at your number; random packs pick unique numbers.',
+      retail: 'Retail value', perBid: 'Per bid', slotsFilled: '{f} / {m} Slots Filled', slotsLeft: '{n} slots remaining', hot: 'Only {n} left!',
+      calc: 'Room full, calculating the winner…', ended: 'Ended. Winning lowest unique bid: {n}', noWinner: 'Ended. No unique bid, no winner.',
+      bLive: 'LIVE', bLock: 'LOCKED', bEnd: 'ENDED',
+      stWin: 'Leading! You hold the lowest unique bid', stWon: 'You WON! Your number was the lowest unique', stClash: 'Clash! {n} of your bids are duplicated',
+      stUnique: '{n} unique bid(s), none the lowest yet', stClosed: 'Room closed', toastClosed: 'Room “{t}” is closed', toastWon: '🏆 You won an auction!',
+      placed: '✅ {n} bid{s} placed (−{c} ETB)', selUser: 'Select a user first', noApi: 'Cannot reach the server. Is it running?', enterNum: 'Enter a number from 1 to {m}', startRange: 'Start must be 1 to {m}',
+      depPrompt: 'Deposit amount (ETB) — mock mobile-money stub', deposited: 'Deposited {n} ETB', otpPrompt: 'Enter the OTP sent to {p}', verified: 'Phone verified ✔',
+      errBal: 'Not enough balance. Deposit and try again.', errClosed: 'This room is closed.', errSlots: 'Not enough slots. Only {n} left.', errUnverified: 'Verify your phone number first.', errOtp: 'Invalid or expired code.', errGeneric: 'Request failed', depRedirect: 'Taking you to secure Chapa checkout…', depChecking: 'Confirming your payment…', depOk: '{n} ETB added to your wallet', depFail: 'Payment was not completed', depPending: 'Payment is still processing. Your wallet will update shortly.', loginTitle: 'Sign in', loginSub: 'Enter your phone number and we will text you a code.', sendCode: 'Send code', phPhone: '09… or +2519…', codeSent: 'Code sent to {p}', verifyLogin: 'Verify and sign in', changeNumber: 'Use a different number', logout: 'Sign out', errPhone: 'Enter a valid phone number', errRate: 'Too many attempts. Try again later.', sessionExpired: 'Session expired. Please sign in again.', cancelledMsg: 'Room cancelled. Your entries were refunded.', errBlocked: 'Your account is suspended. Please contact support.',
+    },
+    am: {
+      brand: 'ዝቅ ጨረታ', tag: 'ዝቅ ብለው ይጫረቱ። ልዩ ይሁኑ። ያሸንፉ።', how1: 'ቁጥሮችዎን ይምረጡ', how2: 'ማንም ያልመረጠው ዝቅተኛ ቁጥር ያሸንፋል', how3: 'ክፍሉ ሲሞላ አሸናፊው ይታወቃል',
+      waiting: 'ቀጥታ ክፍሎችን በመጠባበቅ ላይ…', responsible: 'ዕድሜ 18+ ብቻ። በኃላፊነት ይጫወቱ።', connecting: 'በመገናኘት ላይ…', live: 'ቀጥታ', reconnecting: 'እንደገና በመገናኘት ላይ…',
+      wallet: 'ቦርሳ', etb: 'ብር', deposit: '+ ገንዘብ አስገባ', verifyMsg: 'ስልክ ቁጥርዎ አልተረጋገጠም።', verifyBtn: 'በኮድ ያረጋግጡ', unverifiedTag: 'ያልተረጋገጠ',
+      tabSingle: 'ነጠላ ጨረታ', tabPack: 'ፈጣን ጥቅል ጨረታ', bid: 'ተጫረት', phSingle: 'ቁጥርዎ፣ ለምሳሌ 17', startAt: 'መነሻ ቁጥር', consecutive: 'ተከታታይ', random: 'በዘፈቀደ',
+      packHint: 'ጥቅል ይምረጡ፤ ወዲያውኑ ይገዛል። ተከታታይ ጥቅል ከመረጡት ቁጥር ይጀምራል፤ በዘፈቀደ ደግሞ ልዩ ቁጥሮች ይመረጣሉ።',
+      retail: 'የገበያ ዋጋ', perBid: 'ለአንድ ጨረታ', slotsFilled: '{f} / {m} ቦታዎች ተሞልተዋል', slotsLeft: '{n} ቦታዎች ቀርተዋል', hot: '{n} ቦታ ብቻ ቀርቷል!',
+      calc: 'ክፍሉ ሞልቷል፤ አሸናፊው እየተወሰነ ነው…', ended: 'ተጠናቋል። አሸናፊው ዝቅተኛ ልዩ ቁጥር፦ {n}', noWinner: 'ተጠናቋል። ልዩ ቁጥር ባለመኖሩ አሸናፊ የለም።',
+      bLive: 'ቀጥታ', bLock: 'ተቆልፏል', bEnd: 'ተጠናቋል',
+      stWin: 'እየመሩ ነው! ዝቅተኛው ልዩ ቁጥር የእርስዎ ነው', stWon: 'አሸንፈዋል! ቁጥርዎ ዝቅተኛው ልዩ ቁጥር ነበር', stClash: 'ተጋጭቷል! {n} ጨረታዎችዎ ተደጋግመዋል',
+      stUnique: '{n} ልዩ ጨረታ አለዎት፣ ግን ገና ዝቅተኛው አይደለም', stClosed: 'ክፍሉ ተዘግቷል', toastClosed: 'ክፍል “{t}” ተዘግቷል', toastWon: '🏆 አሸንፈዋል!',
+      placed: '✅ {n} ጨረታ ገብቷል (−{c} ብር)', selUser: 'መጀመሪያ ተጠቃሚ ይምረጡ', noApi: 'አገልጋዩን ማግኘት አልተቻለም። እየሰራ ነው?', enterNum: 'ከ1 እስከ {m} ያለ ቁጥር ያስገቡ', startRange: 'መነሻ ቁጥር ከ1 እስከ {m} መሆን አለበት',
+      depPrompt: 'የሚያስገቡት መጠን (ብር) — የሙከራ ክፍያ', deposited: '{n} ብር ገብቷል', otpPrompt: 'ወደ {p} የተላከውን ኮድ ያስገቡ', verified: 'ስልክ ቁጥር ተረጋግጧል ✔',
+      errBal: 'ቀሪ ሂሳብዎ በቂ አይደለም። ገንዘብ አስገብተው ይሞክሩ።', errClosed: 'ይህ ክፍል ተዘግቷል።', errSlots: 'በቂ ቦታ የለም። {n} ብቻ ቀርተዋል።', errUnverified: 'መጀመሪያ ስልክ ቁጥርዎን ያረጋግጡ።', errOtp: 'ኮዱ ልክ አይደለም ወይም ጊዜው አልፏል።', errGeneric: 'ጥያቄው አልተሳካም', depRedirect: 'ወደ ደህንነቱ የተጠበቀ የChapa ክፍያ በመውሰድ ላይ…', depChecking: 'ክፍያዎ እየተረጋገጠ ነው…', depOk: '{n} ብር ወደ ቦርሳዎ ገብቷል', depFail: 'ክፍያው አልተጠናቀቀም', depPending: 'ክፍያው አሁንም በሂደት ላይ ነው። ቦርሳዎ በቅርቡ ይዘምናል።', loginTitle: 'ይግቡ', loginSub: 'ስልክ ቁጥርዎን ያስገቡ፤ ኮድ በኤስኤምኤስ እንልክልዎታለን።', sendCode: 'ኮድ ላክ', phPhone: '09… ወይም +2519…', codeSent: 'ኮድ ወደ {p} ተልኳል', verifyLogin: 'አረጋግጥና ግባ', changeNumber: 'ሌላ ቁጥር ተጠቀም', logout: 'ውጣ', errPhone: 'ትክክለኛ ስልክ ቁጥር ያስገቡ', errRate: 'ብዙ ሙከራ አድርገዋል። ቆይተው ይሞክሩ።', sessionExpired: 'ክፍለ ጊዜዎ አልፏል። እንደገና ይግቡ።', cancelledMsg: 'ክፍሉ ተሰርዟል። ክፍያዎ ተመልሷል።', errBlocked: 'መለያዎ ታግዷል። እባክዎ ድጋፍ ያነጋግሩ።',
+    },
+  };
+  const ITEMS = {
+    'High-Velocity Tech': { e: '⌚', h: 43, am: ['ፈጣን ቴክኖሎጂ', 'ስማርት ሰዓት እና ጆሮ ማዳመጫ ጥቅል። ትንሽ ክፍል፣ ፈጣን ውጤት።'] },
+    'Premium Electronics': { e: '📺', h: 160, am: ['ምርጥ ኤሌክትሮኒክስ', '55 ኢንች ዘመናዊ ቴሌቪዥን። መካከለኛ ክፍል።'] },
+    'Home Appliances': { e: '🧺', h: 350, am: ['የቤት እቃዎች', 'የልብስ ማጠቢያ ማሽን። ትልቅ ክፍል።'] },
+  };
+  const FALLBACK = [['📱', 200], ['💻', 280], ['🎮', 20]];
+  let lang = 'en';
+  try { lang = localStorage.getItem('lang') || 'en'; } catch (e) {}
+  const t = (k, v) => (I[lang][k] ?? I.en[k] ?? k).replace(/\{(\w+)\}/g, (_, x) => (v && v[x] !== undefined ? v[x] : ''));
+  const itemOf = (a) => ITEMS[a.title] || { e: FALLBACK[a.id % 3][0], h: FALLBACK[a.id % 3][1] };
+
+  const $ = (id) => document.getElementById(id);
+  const f = (c, n) => c.querySelector(`[data-f="${n}"]`);
+  const fmt = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+  const cards = {}, auctions = {}, lastStatus = {};
+  let currentUser = 0, ws = null, retry = 0, timer = null, connKey = 'connecting', walletVal = 0;
+
+  function applyI18n(root) {
+    root.querySelectorAll('[data-i18n]').forEach((el) => (el.textContent = t(el.dataset.i18n)));
+    root.querySelectorAll('[data-ph]').forEach((el) => (el.placeholder = t(el.dataset.ph)));
+  }
+  function tErr(d) {
+    const s = String(d), m = s.match(/only (\d+) remaining/i);
+    if (/insufficient/i.test(s)) return t('errBal');
+    if (/room is closed/i.test(s)) return t('errClosed');
+    if (/not enough slots/i.test(s)) return t('errSlots', { n: m ? m[1] : '' });
+    if (/not verified/i.test(s)) return t('errUnverified');
+    if (/invalid or expired/i.test(s)) return t('errOtp');
+    if (/invalid phone/i.test(s)) return t('errPhone');
+    if (/too many/i.test(s)) return t('errRate');
+    if (/suspended/i.test(s)) return t('errBlocked');
+    return s || t('errGeneric');
+  }
+  function errText(data) {
+    const d = data && data.detail;
+    return tErr(typeof d === 'string' ? d : Array.isArray(d) ? d.map((x) => x.msg).join('; ') : '');
+  }
+
+  // ---------- UI helpers
+  function toast(msg, kind) {
+    const el = $('toast');
+    const c = { green: 'bg-emerald-500 text-emerald-950', yellow: 'bg-amber-400 text-amber-950', red: 'bg-rose-500 text-white', blue: 'bg-sky-500 text-white' };
+    el.className = `fixed left-1/2 -translate-x-1/2 top-24 z-50 px-4 py-2.5 rounded-2xl text-sm font-bold shadow-2xl max-w-[92vw] text-center flash ${c[kind] || c.blue}`;
+    el.textContent = msg;
+    clearTimeout(toast.h);
+    toast.h = setTimeout(() => el.classList.add('hidden'), 3600);
+  }
+  function setWallet(v) {
+    if (v === null || v === undefined) return;
+    const from = walletVal, to = Number(v), t0 = performance.now();
+    walletVal = to;
+    (function step(now) {
+      const p = Math.min(1, (now - t0) / 650), x = from + (to - from) * (1 - Math.pow(1 - p, 3));
+      $('wallet').textContent = x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+  function confetti() {
+    const cols = ['#e8b84b', '#2fb36d', '#e5484d', '#f5f0e1'];
+    for (let i = 0; i < 56; i++) {
+      const d = document.createElement('i');
+      d.style.cssText = `position:fixed;left:50%;top:28%;width:8px;height:13px;background:${cols[i % 4]};z-index:70;border-radius:2px;pointer-events:none`;
+      document.body.appendChild(d);
+      const a = Math.random() * Math.PI * 2, v = 160 + Math.random() * 380;
+      d.animate([{ transform: 'translate(0,0) rotate(0)', opacity: 1 }, { transform: `translate(${Math.cos(a) * v}px,${Math.sin(a) * v + 420}px) rotate(${Math.random() * 900}deg)`, opacity: 0 }],
+        { duration: 1500 + Math.random() * 900, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = () => d.remove();
+    }
+  }
+
+  // ---------- cards
+  function buildCard(a) {
+    const it = itemOf(a), card = document.createElement('article');
+    card.className = 'tk'; card.style.setProperty('--h', it.h);
+    card.innerHTML = `
+      <div class="pat"><span class="badge" data-f="badge"></span><span class="em">${it.e}</span><div class="ring" data-f="ring"><b data-f="pct"></b></div></div>
+      <div class="p-4 space-y-3.5">
+        <div><h2 class="disp text-xl font-extrabold leading-tight" data-f="title"></h2><p class="text-xs mute mt-1" data-f="desc"></p></div>
+        <div class="flex justify-between items-end">
+          <div><div class="text-[11px] mute uppercase tracking-wider" data-i18n="retail"></div><div class="disp gold text-2xl font-extrabold" data-f="value"></div></div>
+          <div class="text-right"><div class="text-[11px] mute uppercase tracking-wider" data-i18n="perBid"></div><div class="font-bold" data-f="fee"></div></div>
+        </div>
+        <div><div class="text-xs font-bold mb-1.5" data-f="slots"></div><div class="bar"><i data-f="bar"></i></div><p class="text-xs mt-1.5 mute" data-f="urgency"></p></div>
+        <div class="st hidden" data-f="status"></div>
+        <div class="seg"><button data-tab="single" class="on" data-i18n="tabSingle"></button><button data-tab="pack" data-i18n="tabPack"></button></div>
+        <div data-p="single" class="flex gap-2">
+          <input data-f="single" type="number" min="1" max="${BID_MAX}" inputmode="numeric" data-ph="phSingle" class="inp flex-1 min-w-0">
+          <button data-act="single" class="cta py-2.5" data-i18n="bid"></button>
+        </div>
+        <div data-p="pack" class="hidden space-y-2.5">
+          <div class="flex gap-2">
+            <select data-f="mode" class="inp !text-sm"><option value="consecutive" data-i18n="consecutive"></option><option value="random" data-i18n="random"></option></select>
+            <input data-f="start" type="number" min="1" value="1" inputmode="numeric" data-ph="startAt" class="inp !text-sm flex-1 min-w-0">
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            ${[10, 50, 100].map((n) => `<button data-pack="${n}" class="pk"><b>${n}</b><small data-f="cost${n}"></small></button>`).join('')}
+          </div>
+          <p class="text-[11px] mute" data-i18n="packHint"></p>
+        </div>
+      </div>`;
+    applyI18n(card);
+
+    card.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => {
+      card.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('on', x === b));
+      card.querySelector('[data-p="single"]').classList.toggle('hidden', b.dataset.tab !== 'single');
+      card.querySelector('[data-p="pack"]').classList.toggle('hidden', b.dataset.tab !== 'pack');
+    }));
+    card.querySelector('[data-act="single"]').addEventListener('click', () => {
+      const v = parseInt(f(card, 'single').value, 10);
+      if (!Number.isInteger(v) || v < 1 || v > BID_MAX) return toast(t('enterNum', { m: BID_MAX }), 'yellow');
+      placeBid(a.id, [v]).then((ok) => { if (ok) f(card, 'single').value = ''; });
+    });
+    f(card, 'single').addEventListener('keydown', (e) => { if (e.key === 'Enter') card.querySelector('[data-act="single"]').click(); });
+    card.querySelectorAll('[data-pack]').forEach((btn) => btn.addEventListener('click', () => {
+      const size = parseInt(btn.dataset.pack, 10), nums = [];
+      if (f(card, 'mode').value === 'random') {
+        const range = Math.max(auctions[a.id].max_slots * 2, size + 1), seen = new Set();
+        while (seen.size < size) seen.add(1 + Math.floor(Math.random() * range));
+        nums.push(...seen);
+      } else {
+        const start = parseInt(f(card, 'start').value, 10);
+        if (!Number.isInteger(start) || start < 1 || start + size - 1 > BID_MAX) return toast(t('startRange', { m: BID_MAX - size + 1 }), 'yellow');
+        for (let i = 0; i < size; i++) nums.push(start + i);
+      }
+      placeBid(a.id, nums);
+    }));
+    return card;
+  }
+
+  function upsertAuction(a) {
+    auctions[a.id] = a;
+    $('empty').classList.add('hidden');
+    let card = cards[a.id];
+    if (!card) { card = cards[a.id] = buildCard(a); $('grid').appendChild(card); }
+    const it = itemOf(a), am = lang === 'am' && it.am;
+    f(card, 'title').textContent = am ? it.am[0] : a.title;
+    f(card, 'desc').textContent = am ? it.am[1] : a.description;
+    f(card, 'value').textContent = fmt(a.market_value) + ' ' + t('etb');
+    f(card, 'fee').textContent = fmt(a.bid_fee) + ' ' + t('etb');
+    [10, 50, 100].forEach((n) => (f(card, 'cost' + n).textContent = fmt(a.bid_fee * n) + ' ' + t('etb')));
+
+    const pct = a.max_slots ? Math.min(100, (a.filled_slots / a.max_slots) * 100) : 0, left = a.max_slots - a.filled_slots;
+    const color = pct >= 85 ? '#e5484d' : pct >= 60 ? '#f2c230' : '#2fb36d';
+    const bar = f(card, 'bar'); bar.style.width = pct + '%'; bar.style.backgroundColor = color;
+    const ring = f(card, 'ring'); ring.style.setProperty('--p', pct); ring.style.setProperty('--rc', color);
+    f(card, 'pct').textContent = Math.round(pct) + '%';
+    f(card, 'slots').textContent = t('slotsFilled', { f: a.filled_slots, m: a.max_slots });
+
+    const u = f(card, 'urgency');
+    if (a.cancelled) { u.textContent = t('cancelledMsg'); u.className = 'text-xs mt-1.5 font-bold text-rose-400'; }
+    else if (a.status === 'ended') { u.textContent = a.winning_bid ? t('ended', { n: a.winning_bid }) : t('noWinner'); u.className = 'text-xs mt-1.5 font-bold gold'; }
+    else if (a.status === 'calculating') { u.textContent = t('calc'); u.className = 'text-xs mt-1.5 font-bold text-amber-300'; }
+    else if (left <= Math.max(3, a.max_slots * 0.1)) { u.textContent = '🔥 ' + t('hot', { n: left }); u.className = 'text-xs mt-1.5 font-bold text-rose-400'; }
+    else { u.textContent = t('slotsLeft', { n: left }); u.className = 'text-xs mt-1.5 mute'; }
+
+    const b = f(card, 'badge'), bm = { active: ['bLive', 'b-live'], calculating: ['bLock', 'b-lock'], ended: ['bEnd', 'b-end'] }[a.status];
+    b.textContent = t(bm[0]); b.className = 'badge ' + bm[1];
+
+    const open = a.status === 'active';
+    card.querySelectorAll('button[data-act], button[data-pack]').forEach((x) => (x.disabled = !open));
+    f(card, 'single').disabled = !open;
+    if (!open && !lastStatus[a.id]) showStatus(a.id, { status: 'closed', final: a.status === 'ended', total_bids: 0 }, true);
+  }
+
+  // ---------- personal status banners: green / yellow / red
+  function showStatus(aid, s, quiet) {
+    const card = cards[aid]; if (!card) return;
+    const prev = lastStatus[aid]; lastStatus[aid] = s;
+    let text, cls;
+    if (s.status === 'winning') { text = t(s.final ? 'stWon' : 'stWin'); cls = 'st-win'; }
+    else if (s.status === 'clashing') { text = '🟡 ' + t('stClash', { n: s.clashing_count || 0 }); cls = 'st-clash'; }
+    else if (s.status === 'unique') { text = t('stUnique', { n: s.unique_count || 0 }); cls = 'st-uni'; }
+    else { text = t('stClosed'); cls = 'st-closed'; }
+    if (s.status === 'winning') text = (s.final ? '🏆 ' : '🟢 ') + text;
+    if (s.status === 'closed') text = '🔴 ' + text;
+    const el = f(card, 'status');
+    el.textContent = text;
+    el.className = 'st ' + cls;
+    if (!quiet) { void el.offsetWidth; el.classList.add('flash'); }
+    if (quiet) return;
+    if (s.status === 'closed' && s.total_bids > 0 && (!prev || prev.status !== 'closed')) toast(t('toastClosed', { t: f(card, 'title').textContent }), 'red');
+    if (s.status === 'winning' && s.final && (!prev || !prev.final)) { toast(t('toastWon'), 'green'); confetti(); }
+  }
+
+  // ---------- bidding
+  async function placeBid(aid, nums) {
+    if (!token) { toast(t('sessionExpired'), 'yellow'); return false; }
+    try {
+      const res = await api(`/api/auctions/${aid}/bid-batch`, { method: 'POST', body: JSON.stringify({ bid_amounts: nums }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(errText(data));
+      setWallet(data.balance);
+      if (data.my_status) showStatus(aid, data.my_status);
+      toast(t('placed', { n: data.accepted, c: fmt(data.charged), s: data.accepted > 1 ? 's' : '' }), 'green');
+      return true;
+    } catch (e) { toast(e instanceof TypeError ? t('noApi') : e.message, 'red'); return false; }
+  }
+
+  // ---------- websocket
+  function setConn(ok, key) {
+    connKey = key;
+    $('connDot').className = 'w-2 h-2 rounded-full ' + (ok ? 'bg-emerald-400' : 'bg-red-500');
+    $('connText').textContent = t(key);
+  }
+  function connect() {
+    clearTimeout(timer);
+    if (ws) { ws.onclose = null; ws.close(); }
+    ws = new WebSocket(`${WS_BASE}/ws`);
+    ws.onopen = () => { retry = 0; setConn(true, 'live'); if (token) ws.send(JSON.stringify({ type: 'auth', token })); };
+    ws.onclose = () => { setConn(false, 'reconnecting'); retry = Math.min(retry + 1, 6); timer = setTimeout(connect, 500 * 2 ** retry); };
+    ws.onerror = () => ws.close();
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.type === 'snapshot') { m.auctions.forEach(upsertAuction); setWallet(m.wallet); m.statuses.forEach((s) => showStatus(s.auction_id, s, true)); }
+      else if (m.type === 'auction_update') upsertAuction(m.auction);
+      else if (m.type === 'bid_status') showStatus(m.auction_id, m);
+      else if (m.type === 'wallet_update') setWallet(m.balance);
+      else if (m.type === 'auth_error') logout(true);
+    };
+  }
+  setInterval(() => { if (ws && ws.readyState === 1) ws.send('ping'); }, 25000);
+
+  // ---------- auth: phone + OTP -> signed token
+  let token = null, loginPhone = '';
+  try { token = localStorage.getItem('lub_token'); } catch (e) {}
+  async function api(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+    const res = await fetch(API + path, { ...opts, headers });
+    if (res.status === 401 && token) { logout(true); throw new Error(t('sessionExpired')); }
+    return res;
+  }
+  function showLogin(on) {
+    $('login').classList.toggle('hidden', !on); $('login').classList.toggle('flex', on);
+    $('authBits').classList.toggle('hidden', on); $('authBits').classList.toggle('flex', !on);
+  }
+  function resetLogin() {
+    $('stepPhone').classList.remove('hidden'); $('stepCode').classList.add('hidden');
+    $('loginErr').classList.add('hidden'); $('codeIn').value = '';
+  }
+  function loginError(msg) { const e = $('loginErr'); e.textContent = msg; e.classList.remove('hidden'); }
+  function enterApp(u) {
+    currentUser = u.id; $('whoami').textContent = u.phone_number;
+    showLogin(false); connect(); checkReturn();
+  }
+  function logout(expired) {
+    token = null; currentUser = 0;
+    try { localStorage.removeItem('lub_token'); } catch (e) {}
+    Object.keys(lastStatus).forEach((k) => delete lastStatus[k]);
+    Object.values(cards).forEach((c) => (f(c, 'status').className = 'st hidden'));
+    setWallet(0); showLogin(true); resetLogin(); connect();
+    if (expired) toast(t('sessionExpired'), 'yellow');
+  }
+  $('logoutBtn').addEventListener('click', () => logout(false));
+  $('backBtn').addEventListener('click', resetLogin);
+
+  $('sendBtn').addEventListener('click', async () => {
+    const raw = $('phoneIn').value.replace(/[\s-]/g, '');
+    if (!/^\+?\d{9,15}$/.test(raw)) return loginError(t('errPhone'));
+    $('loginErr').classList.add('hidden'); $('sendBtn').disabled = true;
+    try {
+      const res = await fetch(`${API}/api/auth/send-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone_number: raw }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(errText(data));
+      loginPhone = raw;
+      $('codeMsg').textContent = t('codeSent', { p: raw });
+      $('stepPhone').classList.add('hidden'); $('stepCode').classList.remove('hidden');
+      if (data.dev_code) $('codeIn').value = data.dev_code;  // only present when the server runs with DEV_MODE=1
+      $('codeIn').focus();
+    } catch (e) { loginError(e instanceof TypeError ? t('noApi') : e.message); }
+    finally { $('sendBtn').disabled = false; }
+  });
+  $('phoneIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('sendBtn').click(); });
+  $('codeIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('verifyBtn2').click(); });
+
+  $('verifyBtn2').addEventListener('click', async () => {
+    const code = $('codeIn').value.trim();
+    if (!code) return;
+    $('loginErr').classList.add('hidden'); $('verifyBtn2').disabled = true;
+    try {
+      const res = await fetch(`${API}/api/auth/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone_number: loginPhone, code }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(errText(data));
+      token = data.token;
+      try { localStorage.setItem('lub_token', token); } catch (e) {}
+      enterApp(data.user);
+    } catch (e) { loginError(e instanceof TypeError ? t('noApi') : e.message); }
+    finally { $('verifyBtn2').disabled = false; }
+  });
+
+  // ---------- wallet top-up (Chapa when configured, mock in dev otherwise)
+  let chapaOn = false;
+  async function loadPayConfig() { try { chapaOn = !!(await (await fetch(`${API}/api/payments/config`)).json()).chapa; } catch (e) {} }
+
+  $('depositBtn').addEventListener('click', async () => {
+    if (!token) return toast(t('sessionExpired'), 'yellow');
+    const amount = parseFloat(prompt(t('depPrompt'), '500'));
+    if (!(amount > 0)) return;
+    try {
+      const res = await api(chapaOn ? '/api/wallet/deposit/initiate' : '/api/wallet/deposit', {
+        method: 'POST', body: JSON.stringify(chapaOn ? { amount } : { amount, provider: 'mock' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(errText(data));
+      if (chapaOn) { toast(t('depRedirect'), 'blue'); location.href = data.checkout_url; return; }
+      setWallet(data.balance); toast(t('deposited', { n: fmt(amount) }), 'green');
+    } catch (e) { toast(e instanceof TypeError ? t('noApi') : e.message, 'red'); }
+  });
+
+  async function checkReturn() {
+    const ref = new URLSearchParams(location.search).get('deposit');
+    if (!ref) return;
+    history.replaceState(null, '', location.pathname);
+    toast(t('depChecking'), 'blue');
+    for (let i = 0; i < 30; i++) {
+      try {
+        const r = await api(`/api/wallet/deposit/status/${encodeURIComponent(ref)}`);
+        const d = await r.json();
+        if (r.ok && d.status === 'success') { setWallet(d.balance); return toast(t('depOk', { n: fmt(d.amount) }), 'green'); }
+        if (r.ok && d.status !== 'pending') return toast(t('depFail'), 'red');
+      } catch (e) { if (!token) return; }
+      await new Promise((ok) => setTimeout(ok, 2000));
+    }
+    toast(t('depPending'), 'yellow');
+  }
+
+  // ---------- language switch
+  function setLang(l) {
+    lang = l;
+    try { localStorage.setItem('lang', l); } catch (e) {}
+    document.documentElement.lang = l === 'am' ? 'am' : 'en';
+    $('langEn').classList.toggle('on', l === 'en'); $('langAm').classList.toggle('on', l === 'am');
+    applyI18n(document);
+    $('connText').textContent = t(connKey);
+    Object.values(auctions).forEach(upsertAuction);
+    Object.entries(lastStatus).forEach(([id, s]) => showStatus(id, s, true));
+  }
+  $('langEn').addEventListener('click', () => setLang('en'));
+  $('langAm').addEventListener('click', () => setLang('am'));
+
+  setLang(lang);
+  setConn(false, 'connecting');
+  loadPayConfig();
+  showLogin(!token);
+  if (!token) connect();
+  else api('/api/me').then(async (r) => { if (!r.ok) throw new Error(); enterApp(await r.json()); })
+    .catch(() => { if (token) { toast(t('noApi'), 'red'); connect(); } });
+})();
+</script>
+</body>
+</html>

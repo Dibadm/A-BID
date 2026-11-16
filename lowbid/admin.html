@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>LowBid Admin</title>
+<style nonce="{{NONCE}}">
+  :root { --bg:#f4f5f8; --card:#fff; --ink:#161a23; --mute:#6b7384; --line:#e3e6ee; --side:#12151d; --gold:#c8921a; --ok:#1c8f55; --bad:#c9353b; --warn:#b7791f; --blue:#2b6cdf; }
+  * { box-sizing:border-box; } body { margin:0; font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  button,input,select,textarea { font:inherit; } a { color:var(--blue); cursor:pointer; text-decoration:none; }
+  #shell { display:flex; min-height:100vh; } nav { width:208px; background:var(--side); color:#c9cfdd; padding:16px 10px; display:flex; flex-direction:column; gap:2px; flex:none; position:sticky; top:0; height:100vh; }
+  nav h1 { font-size:17px; color:#fff; margin:0 8px 14px; } nav h1 span { color:var(--gold); }
+  nav a { color:#c9cfdd; padding:8px 10px; border-radius:8px; display:block; } nav a:hover { background:#1d2230; } nav a.on { background:#242b3d; color:#fff; font-weight:600; }
+  nav .sp { flex:1; } nav small { padding:0 10px; color:#7f879a; }
+  main { flex:1; padding:22px; min-width:0; } h2 { margin:0 0 14px; font-size:20px; } h3 { margin:18px 0 8px; font-size:15px; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+  .kpi b { display:block; font-size:22px; margin-top:2px; } .kpi span { color:var(--mute); font-size:12px; } .kpi.warn b { color:var(--bad); }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; } th { font-size:12px; color:var(--mute); background:#fafbfc; white-space:nowrap; }
+  tr:last-child td { border-bottom:0; } tr.click { cursor:pointer; } tr.click:hover td { background:#f7f9fc; } td.num,th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .wrap { overflow-x:auto; } .mono { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; word-break:break-all; }
+  .btn { background:#fff; border:1px solid var(--line); padding:7px 12px; border-radius:8px; cursor:pointer; } .btn:hover { border-color:#b9bfce; }
+  .btn.pri { background:var(--ink); color:#fff; border-color:var(--ink); } .btn.dng { background:var(--bad); color:#fff; border-color:var(--bad); } .btn.sm { padding:3px 8px; font-size:12px; } .btn:disabled { opacity:.5; cursor:not-allowed; }
+  input,select,textarea { border:1px solid var(--line); border-radius:8px; padding:7px 10px; background:#fff; max-width:100%; } textarea { width:100%; min-height:64px; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:99px; font-size:11px; font-weight:700; background:#eceff5; color:#444; }
+  .b-active,.b-success,.b-delivered,.b-deposit { background:#dff4e8; color:var(--ok); } .b-calculating,.b-pending,.b-review { background:#fdf0d5; color:var(--warn); }
+  .b-ended,.b-failed,.b-expired { background:#f1f1f4; color:#555; } .b-blocked,.b-cancelled { background:#fde3e4; color:var(--bad); }
+  .pager { display:flex; gap:8px; align-items:center; margin-top:10px; color:var(--mute); }
+  .chart { display:flex; align-items:flex-end; gap:6px; height:150px; padding-top:8px; } .chart div { flex:1; display:flex; gap:2px; align-items:flex-end; height:100%; position:relative; }
+  .chart i { flex:1; display:block; border-radius:3px 3px 0 0; min-height:1px; } .chart .d { background:var(--blue); } .chart .b { background:var(--gold); }
+  .legend { color:var(--mute); font-size:12px; margin-top:6px; } .legend u { display:inline-block; width:10px; height:10px; border-radius:2px; margin:0 4px 0 10px; text-decoration:none; }
+  #modal { position:fixed; inset:0; background:rgba(15,18,28,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:50; } #modal.on { display:flex; }
+  #modal .card { width:100%; max-width:440px; max-height:92vh; overflow:auto; } .f { margin-bottom:10px; } .f label { display:block; font-size:12px; color:var(--mute); margin-bottom:3px; } .f input,.f select { width:100%; }
+  .err { color:var(--bad); font-size:13px; margin:6px 0; } .hint { color:var(--mute); font-size:12px; }
+  #toast { position:fixed; right:16px; bottom:16px; background:var(--ink); color:#fff; padding:10px 14px; border-radius:10px; display:none; z-index:60; max-width:80vw; } #toast.bad { background:var(--bad); }
+  #login { max-width:360px; margin:12vh auto; } #login .card { padding:22px; } .kv { display:grid; grid-template-columns:140px 1fr; gap:4px 12px; } .kv span { color:var(--mute); }
+  @media (max-width:760px) { #shell { flex-direction:column; } nav { width:auto; height:auto; position:static; flex-direction:row; flex-wrap:wrap; } nav h1 { width:100%; } nav .sp,nav small { display:none; } main { padding:12px; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal"><div class="card" id="modalBody"></div></div>
+<div id="toast"></div>
+<script nonce="{{NONCE}}">
+(() => {
+  'use strict';
+  const app = document.getElementById('app');
+  let token = null, me = null;
+  try { token = sessionStorage.getItem('adm_token'); } catch (e) {}
+
+  // ---------- tiny DOM helper (text only: never injects HTML, so admin-entered or player-entered text cannot run script)
+  const h = (tag, attrs, ...kids) => {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === 'class') el.className = v; else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (v !== false && v != null) el.setAttribute(k, v);
+    }
+    kids.flat(Infinity).forEach((c) => { if (c == null || c === false) return; el.append(c.nodeType ? c : document.createTextNode(String(c))); });
+    return el;
+  };
+  const money = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fdt = (s) => (s ? new Date(s + 'Z').toLocaleString() : '');
+  const badge = (s) => h('span', { class: 'badge b-' + s }, s);
+  const can = (p) => me && me.perms.includes(p);
+  const uid = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('');
+
+  let toastT;
+  function toast(msg, bad) {
+    const t = document.getElementById('toast'); t.textContent = msg; t.className = bad ? 'bad' : ''; t.style.display = 'block';
+    clearTimeout(toastT); toastT = setTimeout(() => (t.style.display = 'none'), 3800);
+  }
+  async function api(path, opts = {}) {
+    const r = await fetch('/api/admin' + path, { ...opts, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) } });
+    if (r.status === 401 && token) { logout(); throw new Error('Session expired. Please sign in again.'); }
+    if (opts.raw) { if (!r.ok) throw new Error('Request failed'); return r; }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(typeof d.detail === 'string' ? d.detail : Array.isArray(d.detail) ? d.detail.map((x) => x.msg).join('; ') : 'Request failed');
+    return d;
+  }
+  const post = (path, body) => api(path, { method: 'POST', body: JSON.stringify(body || {}) });
+
+  // ---------- modal form
+  const modalEl = document.getElementById('modal'), modalBody = document.getElementById('modalBody');
+  const closeModal = () => modalEl.classList.remove('on');
+  modalEl.addEventListener('mousedown', (e) => { if (e.target === modalEl) closeModal(); });
+  function form({ title, text, fields = [], submit = 'Save', danger, onSubmit }) {
+    const err = h('div', { class: 'err' }), inputs = {};
+    const body = h('div', {}, h('h3', { style: 'margin-top:0' }, title), text ? h('p', { class: 'hint' }, text) : null,
+      fields.map((f) => {
+        let input;
+        if (f.type === 'select') input = h('select', {}, f.options.map((o) => h('option', { value: o }, o)));
+        else if (f.type === 'textarea') input = h('textarea', { placeholder: f.placeholder || '' });
+        else input = h('input', { type: f.type || 'text', placeholder: f.placeholder || '', step: f.step, autocomplete: 'off' });
+        if (f.value != null) input.value = f.value;
+        inputs[f.name] = input;
+        return h('div', { class: 'f' }, h('label', {}, f.label), input, f.hint ? h('div', { class: 'hint' }, f.hint) : null);
+      }), err,
+      h('div', { class: 'bar', style: 'justify-content:flex-end;margin:12px 0 0' },
+        h('button', { class: 'btn', onclick: closeModal }, 'Cancel'),
+        h('button', { class: 'btn ' + (danger ? 'dng' : 'pri'), onclick: async (e) => {
+          const vals = {}; fields.forEach((f) => (vals[f.name] = inputs[f.name].value));
+          e.target.disabled = true; err.textContent = '';
+          try { await onSubmit(vals); closeModal(); } catch (ex) { err.textContent = ex.message; e.target.disabled = false; }
+        } }, submit)));
+    modalBody.replaceChildren(body); modalEl.classList.add('on');
+    const first = body.querySelector('input,select,textarea'); if (first) first.focus();
+  }
+
+  // ---------- paged table
+  function pagedTable(cols, load, onRow) {
+    let page = 1; const wrap = h('div', {}), info = h('span', {}), prev = h('button', { class: 'btn sm' }, 'Prev'), next = h('button', { class: 'btn sm' }, 'Next');
+    const holder = h('div', { class: 'wrap' });
+    async function go(p) {
+      page = p;
+      try {
+        const d = await load(page); const size = 25, pages = Math.max(1, Math.ceil(d.total / size));
+        const tbl = h('table', {}, h('thead', {}, h('tr', {}, cols.map((c) => h('th', { class: c.num ? 'num' : '' }, c.h)))),
+          h('tbody', {}, d.items.length ? d.items.map((row) => { const tr = h('tr', { class: onRow ? 'click' : '' }, cols.map((c) => h('td', { class: (c.num ? 'num ' : '') + (c.mono ? 'mono' : '') }, c.f(row)))); if (onRow) tr.addEventListener('click', (e) => { if (!e.target.closest('button,a')) onRow(row); }); return tr; })
+            : h('tr', {}, h('td', { colspan: cols.length, class: 'hint' }, 'Nothing found'))));
+        holder.replaceChildren(tbl); info.textContent = `Page ${page} of ${pages} · ${d.total} total`; prev.disabled = page <= 1; next.disabled = page >= pages;
+      } catch (e) { holder.replaceChildren(h('div', { class: 'err' }, e.message)); }
+    }
+    prev.addEventListener('click', () => go(page - 1)); next.addEventListener('click', () => go(page + 1));
+    wrap.append(holder, h('div', { class: 'pager' }, prev, next, info)); wrap.reload = () => go(page); wrap.first = () => go(1); go(1);
+    return wrap;
+  }
+  const kpi = (label, val, cls) => h('div', { class: 'card kpi ' + (cls || '') }, h('span', {}, label), h('b', {}, val));
+  const qs = (o) => new URLSearchParams(Object.entries(o).filter(([, v]) => v !== '' && v != null)).toString();
+
+  // ---------- pages
+  const pages = {};
+  pages.dashboard = async (root) => {
+    const d = await api('/dashboard'), max = Math.max(1, ...d.series.map((s) => Math.max(s.deposits, s.bids)));
+    root.append(h('h2', {}, 'Dashboard'),
+      h('div', { class: 'grid' },
+        kpi('Deposits today (ETB)', money(d.deposits_today)), kpi('Bid revenue today (ETB)', money(d.bids_today)),
+        kpi('Deposits total (ETB)', money(d.deposits_total)), kpi('Bid revenue total (ETB)', money(d.bids_total)),
+        kpi('Platform fees (ETB)', money(d.fees_total)), kpi('Partner commissions (ETB)', money(d.commissions_total)),
+        kpi('Refunded (ETB)', money(d.refunds_total)), kpi('Player wallets held (ETB)', money(d.wallet_liabilities)),
+        kpi('Players', `${d.users_total} (+${d.users_today} today)`), kpi('Rooms live / locked / ended', `${d.rooms_active} / ${d.rooms_calculating} / ${d.rooms_ended}`),
+        kpi('Payments pending', d.payments_pending), kpi('Payments needing review', d.payments_review, d.payments_review ? 'warn' : '')),
+      h('div', { class: 'card' }, h('b', {}, 'Last 14 days (UTC+' + d.tz_offset_hours + ')'),
+        h('div', { class: 'chart' }, d.series.map((s) => h('div', { title: `${s.date}\nDeposits ${money(s.deposits)}\nBids ${money(s.bids)}` },
+          h('i', { class: 'd', style: `height:${(s.deposits / max) * 100}%` }), h('i', { class: 'b', style: `height:${(s.bids / max) * 100}%` })))),
+        h('div', { class: 'legend' }, h('u', { style: 'background:var(--blue)' }), 'Deposits', h('u', { style: 'background:var(--gold)' }), 'Bid revenue')));
+  };
+
+  pages.rooms = async (root, arg) => {
+    if (arg) return roomDetail(root, arg);
+    const list = await api('/auctions');
+    root.append(h('div', { class: 'bar' }, h('h2', { style: 'margin:0;flex:1' }, 'Rooms'), can('auctions:write') ? h('button', { class: 'btn pri', onclick: newRoom }, '+ New room') : null),
+      h('div', { class: 'wrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['ID', 'Title', 'Status', 'Slots', 'Fee', 'Retail value', 'Ends'].map((x) => h('th', {}, x)))),
+        h('tbody', {}, list.map((a) => { const tr = h('tr', { class: 'click' }, h('td', {}, a.id), h('td', {}, a.title), h('td', {}, badge(a.status)), h('td', {}, `${a.filled_slots} / ${a.max_slots}`), h('td', {}, money(a.bid_fee)), h('td', {}, money(a.market_value)), h('td', {}, fdt(a.ends_at))); tr.addEventListener('click', () => (location.hash = '#/rooms/' + a.id)); return tr; })))));
+  };
+  function newRoom() {
+    const dflt = new Date(Date.now() + 7 * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+    form({ title: 'New room', submit: 'Create room', fields: [
+      { name: 'title', label: 'Title' }, { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'market_value', label: 'Retail value (ETB)', type: 'number', step: '0.01' }, { name: 'bid_fee', label: 'Price per bid (ETB)', type: 'number', step: '0.01' },
+      { name: 'max_slots', label: 'Slots', type: 'number', value: 100 }, { name: 'ends_at', label: 'Ends at (your local time)', type: 'datetime-local', value: dflt }],
+    onSubmit: async (v) => { const r = await post('/auctions', { title: v.title, description: v.description, market_value: v.market_value, bid_fee: v.bid_fee, max_slots: Number(v.max_slots), ends_at: new Date(v.ends_at).toISOString() }); toast('Room created'); location.hash = '#/rooms/' + r.id; } });
+  }
+  async function roomDetail(root, id) {
+    const a = await api('/auctions/' + id), reload = () => route();
+    const acts = [];
+    if (a.status === 'active' && can('auctions:write')) acts.push(h('button', { class: 'btn', onclick: () => form({ title: 'Close room now?', text: 'Stops new bids and picks the winner immediately.', submit: 'Close room', onSubmit: async () => { await post(`/auctions/${id}/close`); toast('Room closed'); reload(); } }) }, 'Close now'));
+    if (a.status !== 'ended' && can('refunds')) acts.push(h('button', { class: 'btn dng', onclick: () => form({ title: 'Cancel room and refund everyone?', text: 'All bids and platform fees are returned to wallets. This cannot be undone.', danger: true, submit: 'Cancel and refund', fields: [{ name: 'reason', label: 'Reason (audited)', type: 'textarea' }], onSubmit: async (v) => { const r = await post(`/auctions/${id}/cancel`, { reason: v.reason }); toast(`Refunded ${r.players_refunded} players (${money(r.total_refunded)} ETB)`); reload(); } }) }, 'Cancel and refund'));
+    if (a.status === 'ended' && !a.winner_id && !a.refunded_at && can('refunds')) acts.push(h('button', { class: 'btn dng', onclick: () => form({ title: 'Refund all entries?', text: 'This room ended with no winner. Everyone gets their bids and fees back.', danger: true, submit: 'Refund everyone', fields: [{ name: 'reason', label: 'Reason (audited)', type: 'textarea' }], onSubmit: async (v) => { const r = await post(`/auctions/${id}/refund`, { reason: v.reason }); toast(`Refunded ${r.players_refunded} players`); reload(); } }) }, 'Refund (no winner)'));
+    if (a.winner_id && can('prizes')) acts.push(h('button', { class: 'btn', onclick: () => form({ title: 'Prize delivery', fields: [{ name: 'status', label: 'Status', type: 'select', options: ['pending', 'delivered'], value: a.prize_status }, { name: 'note', label: 'Note', value: a.prize_note }], onSubmit: async (v) => { await post(`/auctions/${id}/prize`, v); toast('Saved'); reload(); } }) }, 'Prize status'));
+    root.append(h('div', { class: 'bar' }, h('a', { onclick: () => (location.hash = '#/rooms') }, '← Rooms'), h('h2', { style: 'margin:0;flex:1' }, `#${a.id} ${a.title}`), badge(a.status), a.outcome ? badge(a.outcome === 'cancelled' ? 'cancelled' : 'refunded') : null),
+      h('div', { class: 'bar' }, acts),
+      h('div', { class: 'grid' }, kpi('Slots', `${a.filled_slots} / ${a.max_slots}`), kpi('Players', a.players), kpi('Bids', a.bids), kpi('Bid revenue (ETB)', money(a.bid_revenue)), kpi('Platform fees (ETB)', money(a.fees)), kpi('Commissions (ETB)', money(a.commissions)), kpi('Refunded (ETB)', money(a.refunded))),
+      h('div', { class: 'card kv' }, h('span', {}, 'Price per bid'), h('div', {}, money(a.bid_fee) + ' ETB'), h('span', {}, 'Retail value'), h('div', {}, money(a.market_value) + ' ETB'), h('span', {}, 'Ends'), h('div', {}, fdt(a.ends_at)),
+        h('span', {}, 'Winning number'), h('div', {}, a.lowest_unique_bid || (a.status === 'ended' ? 'none' : 'hidden until the room ends')),
+        h('span', {}, 'Winner'), h('div', {}, a.winner_id ? h('a', { onclick: () => (location.hash = '#/users/' + a.winner_id) }, a.winner_phone || '#' + a.winner_id) : '-'),
+        a.winner_id ? [h('span', {}, 'Prize'), h('div', {}, badge(a.prize_status), ' ', a.prize_note)] : null, a.outcome ? [h('span', {}, 'Outcome note'), h('div', {}, a.outcome_note)] : null,
+        h('span', {}, 'Description'), h('div', {}, a.description || '-')));
+  }
+
+  pages.users = async (root, arg) => {
+    if (arg) return userDetail(root, arg);
+    const q = h('input', { placeholder: 'Search phone or ID' }); let tbl;
+    const mk = () => pagedTable([{ h: 'ID', f: (u) => u.id }, { h: 'Phone', f: (u) => u.phone_number }, { h: 'Balance (ETB)', num: true, f: (u) => money(u.wallet_balance) }, { h: 'Verified', f: (u) => (u.is_verified ? 'yes' : 'no') }, { h: 'Status', f: (u) => (u.blocked ? badge('blocked') : '') }, { h: 'Joined', f: (u) => fdt(u.created_at) }],
+      (p) => api('/users?' + qs({ q: q.value, page: p })), (u) => (location.hash = '#/users/' + u.id));
+    const holder = h('div', {}); const search = () => holder.replaceChildren((tbl = mk()));
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+    root.append(h('h2', {}, 'Players'), h('div', { class: 'bar' }, q, h('button', { class: 'btn', onclick: search }, 'Search')), holder); search();
+  };
+  async function userDetail(root, id) {
+    const d = await api('/users/' + id), u = d.user, reload = () => route();
+    const acts = [];
+    if (can('users:block')) acts.push(h('button', { class: 'btn ' + (u.blocked ? '' : 'dng'), onclick: () => form({ title: u.blocked ? 'Unblock player' : 'Block player', text: u.blocked ? '' : 'Blocked players are signed out and cannot bid or deposit. Funds stay in their wallet.', danger: !u.blocked, submit: u.blocked ? 'Unblock' : 'Block', fields: [{ name: 'reason', label: 'Reason (audited)', type: 'textarea' }], onSubmit: async (v) => { await post(`/users/${id}/${u.blocked ? 'unblock' : 'block'}`, v); toast('Saved'); reload(); } }) }, u.blocked ? 'Unblock' : 'Block'));
+    if (can('wallet:adjust')) acts.push(h('button', { class: 'btn', onclick: () => { const key = uid(); form({ title: 'Adjust wallet', text: 'Positive adds money, negative removes it. Recorded in the ledger and audit log.', submit: 'Apply', fields: [{ name: 'amount', label: 'Amount (ETB, e.g. 100 or -50)', type: 'number', step: '0.01' }, { name: 'reason', label: 'Reason (audited)', type: 'textarea' }], onSubmit: async (v) => { await post(`/users/${id}/adjust`, { amount: v.amount, reason: v.reason, idempotency_key: key }); toast('Wallet updated'); reload(); } }); } }, 'Adjust wallet'));
+    const t = (cols, rows) => h('div', { class: 'wrap' }, h('table', {}, h('thead', {}, h('tr', {}, cols.map((c) => h('th', {}, c.h)))), h('tbody', {}, rows.length ? rows.map((r) => h('tr', {}, cols.map((c) => h('td', { class: c.mono ? 'mono' : '' }, c.f(r))))) : h('tr', {}, h('td', { colspan: cols.length, class: 'hint' }, 'None')))));
+    root.append(h('div', { class: 'bar' }, h('a', { onclick: () => (location.hash = '#/users') }, '← Players'), h('h2', { style: 'margin:0;flex:1' }, u.phone_number), u.blocked ? badge('blocked') : null), h('div', { class: 'bar' }, acts),
+      h('div', { class: 'grid' }, kpi('Balance (ETB)', money(u.wallet_balance)), kpi('Verified', u.is_verified ? 'yes' : 'no'), kpi('Joined', fdt(u.created_at))), u.blocked ? h('div', { class: 'card err' }, 'Blocked: ' + u.block_reason) : null,
+      h('h3', {}, 'Recent wallet activity'), t([{ h: 'When', f: (r) => fdt(r.created_at) }, { h: 'Type', f: (r) => badge(r.kind) }, { h: 'Amount', f: (r) => money(r.amount) }, { h: 'Balance after', f: (r) => money(r.balance_after) }, { h: 'Room', f: (r) => r.auction_id || '' }, { h: 'Reference', mono: 1, f: (r) => r.reference || '' }], d.transactions),
+      h('h3', {}, 'Rooms played'), t([{ h: 'Room', f: (r) => h('a', { onclick: () => (location.hash = '#/rooms/' + r.auction_id) }, `#${r.auction_id} ${r.title}`) }, { h: 'Bids', f: (r) => r.count }, { h: 'First bid', f: (r) => fdt(r.first_at) }], d.bids),
+      h('h3', {}, 'Payments'), t([{ h: 'When', f: (r) => fdt(r.created_at) }, { h: 'Amount', f: (r) => money(r.amount) }, { h: 'Status', f: (r) => badge(r.status) }, { h: 'Ref', mono: 1, f: (r) => r.tx_ref }], d.payments));
+  }
+
+  pages.payments = async (root) => {
+    const st = h('select', {}, ['', 'pending', 'review', 'success', 'failed', 'expired'].map((s) => h('option', { value: s }, s || 'all statuses'))), q = h('input', { placeholder: 'Reference or phone' });
+    const holder = h('div', {});
+    const act = (p) => { const a = []; if (p.status === 'pending' || p.status === 'expired') a.push(h('button', { class: 'btn sm', onclick: async (e) => { e.target.disabled = true; try { const r = await post(`/payments/${p.tx_ref}/recheck`); toast('Status: ' + r.status); tbl.reload(); } catch (x) { toast(x.message, true); e.target.disabled = false; } } }, 'Recheck'));
+      if (p.status === 'review' && can('payments:resolve')) a.push(h('button', { class: 'btn sm', onclick: () => form({ title: 'Resolve payment', text: `Amount ${money(p.amount)} ETB. Check the Chapa dashboard first.`, submit: 'Save', fields: [{ name: 'action', label: 'Decision', type: 'select', options: ['approve', 'reject'] }, { name: 'note', label: 'Note (audited)', type: 'textarea' }], onSubmit: async (v) => { await post(`/payments/${p.tx_ref}/resolve`, v); toast('Saved'); tbl.reload(); } }) }, 'Resolve')); return a; };
+    let tbl; const mk = () => (tbl = pagedTable([{ h: 'When', f: (p) => fdt(p.created_at) }, { h: 'Player', f: (p) => h('a', { onclick: () => (location.hash = '#/users/' + p.user_id) }, p.phone || p.user_id) }, { h: 'Amount', num: true, f: (p) => money(p.amount) }, { h: 'Status', f: (p) => badge(p.status) }, { h: 'Reference', mono: 1, f: (p) => p.tx_ref }, { h: 'Note', f: (p) => p.failure_reason || '' }, { h: '', f: act }], (pg) => api('/payments?' + qs({ status: st.value, q: q.value, page: pg }))));
+    const go = () => holder.replaceChildren(mk()); st.addEventListener('change', go); q.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    root.append(h('h2', {}, 'Payments'), h('div', { class: 'bar' }, st, q, h('button', { class: 'btn', onclick: go }, 'Search')), holder); go();
+  };
+
+  pages.ledger = async (root) => {
+    const f = { kind: h('select', {}, ['', 'deposit', 'bid_purchase', 'platform_fee', 'refund', 'admin_adjust'].map((s) => h('option', { value: s }, s || 'all types'))), user_id: h('input', { type: 'number', placeholder: 'Player ID', style: 'width:110px' }), auction_id: h('input', { type: 'number', placeholder: 'Room ID', style: 'width:100px' }), date_from: h('input', { type: 'date' }), date_to: h('input', { type: 'date' }), q: h('input', { placeholder: 'Reference' }) };
+    const params = (p) => qs({ ...Object.fromEntries(Object.entries(f).map(([k, el]) => [k, el.value])), page: p }), holder = h('div', {});
+    const go = () => holder.replaceChildren(pagedTable([{ h: 'When', f: (t) => fdt(t.created_at) }, { h: 'Player', f: (t) => t.phone }, { h: 'Type', f: (t) => badge(t.kind) }, { h: 'Amount', num: true, f: (t) => money(t.amount) }, { h: 'Balance after', num: true, f: (t) => money(t.balance_after) }, { h: 'Room', f: (t) => t.auction_id || '' }, { h: 'Reference', mono: 1, f: (t) => t.reference || '' }], (p) => api('/ledger?' + params(p))));
+    const exp = async () => { try { const r = await api('/ledger/export.csv?' + params(1), { raw: true }), a = h('a', { href: URL.createObjectURL(await r.blob()), download: 'ledger.csv' }); document.body.append(a); a.click(); a.remove(); } catch (e) { toast(e.message, true); } };
+    root.append(h('h2', {}, 'Ledger'), h('div', { class: 'bar' }, Object.values(f), h('button', { class: 'btn pri', onclick: go }, 'Apply'), h('button', { class: 'btn', onclick: exp }, 'Export CSV')), holder); go();
+  };
+
+  pages.reports = async (root) => {
+    const to = h('input', { type: 'date' }), from = h('input', { type: 'date' }), holder = h('div', {});
+    const go = async () => { try { const d = await api('/reports/summary?' + qs({ date_from: from.value, date_to: to.value })); if (!from.value) { from.value = d.from; to.value = d.to; }
+      const tb = (cols, rows, foot) => h('div', { class: 'wrap' }, h('table', {}, h('thead', {}, h('tr', {}, cols.map((c) => h('th', { class: c.num ? 'num' : '' }, c.h)))), h('tbody', {}, rows.map((r) => h('tr', {}, cols.map((c) => h('td', { class: c.num ? 'num' : '' }, c.f(r)))))), foot ? h('tfoot', {}, h('tr', {}, cols.map((c, i) => h('th', { class: c.num ? 'num' : '' }, i === 0 ? 'Total' : c.t ? money(foot[c.t]) : '')))) : null));
+      const cols = [{ h: 'Day', f: (r) => r.date }, ...['deposits', 'bids', 'fees', 'refunds', 'adjustments', 'commissions'].map((k) => ({ h: k[0].toUpperCase() + k.slice(1) + ' (ETB)', num: true, t: k, f: (r) => money(r[k]) }))];
+      holder.replaceChildren(tb(cols, d.days, d.totals), h('h3', {}, 'Partner commissions by room'), tb([{ h: 'Room', f: (r) => `#${r.auction_id} ${r.title}` }, { h: 'Commission (ETB)', num: true, f: (r) => money(r.commission) }], d.commissions_by_room)); } catch (e) { holder.replaceChildren(h('div', { class: 'err' }, e.message)); } };
+    root.append(h('h2', {}, 'Reports'), h('div', { class: 'bar' }, from, to, h('button', { class: 'btn pri', onclick: go }, 'Run')), holder); go();
+  };
+
+  pages.prizes = async (root) => {
+    const st = h('select', {}, ['', 'pending', 'delivered'].map((s) => h('option', { value: s }, s || 'all'))), holder = h('div', {}); let tbl;
+    const go = () => holder.replaceChildren((tbl = pagedTable([{ h: 'Room', f: (p) => h('a', { onclick: () => (location.hash = '#/rooms/' + p.auction_id) }, `#${p.auction_id} ${p.title}`) }, { h: 'Winner', f: (p) => h('a', { onclick: () => (location.hash = '#/users/' + p.winner_id) }, p.winner_phone) }, { h: 'Number', f: (p) => p.winning_bid }, { h: 'Value (ETB)', num: true, f: (p) => money(p.market_value) }, { h: 'Prize', f: (p) => badge(p.prize_status) }, { h: 'Note', f: (p) => p.prize_note }, { h: '', f: (p) => can('prizes') ? h('button', { class: 'btn sm', onclick: () => form({ title: 'Prize delivery', fields: [{ name: 'status', label: 'Status', type: 'select', options: ['pending', 'delivered'], value: p.prize_status }, { name: 'note', label: 'Note', value: p.prize_note }], onSubmit: async (v) => { await post(`/auctions/${p.auction_id}/prize`, v); toast('Saved'); tbl.reload(); } }) }, 'Update') : '' }], (pg) => api('/prizes?' + qs({ status: st.value, page: pg })))));
+    st.addEventListener('change', go); root.append(h('h2', {}, 'Prizes'), h('div', { class: 'bar' }, st), holder); go();
+  };
+
+  pages.audit = async (root) => {
+    const a = h('input', { placeholder: 'Action (e.g. wallet_adjusted)' }), n = h('input', { placeholder: 'Admin username' }), holder = h('div', {});
+    const go = () => holder.replaceChildren(pagedTable([{ h: 'When', f: (r) => fdt(r.created_at) }, { h: 'Admin', f: (r) => r.admin }, { h: 'Action', f: (r) => r.action }, { h: 'Target', f: (r) => (r.target_type ? `${r.target_type} ${r.target_id || ''}` : '') }, { h: 'Details', mono: 1, f: (r) => r.details }, { h: 'IP', f: (r) => r.ip || '' }], (p) => api('/audit?' + qs({ action: a.value, admin_name: n.value, page: p }))));
+    root.append(h('h2', {}, 'Audit log'), h('div', { class: 'bar' }, a, n, h('button', { class: 'btn', onclick: go }, 'Filter')), holder); go();
+  };
+
+  pages.admins = async (root) => {
+    const list = await api('/admins'), reload = () => route();
+    root.append(h('div', { class: 'bar' }, h('h2', { style: 'margin:0;flex:1' }, 'Admins'), h('button', { class: 'btn pri', onclick: () => form({ title: 'New admin', submit: 'Create', fields: [{ name: 'username', label: 'Username (lowercase)' }, { name: 'password', label: 'Temporary password', type: 'password', hint: 'Min 12 characters with letters and digits. Share it securely.' }, { name: 'role', label: 'Role', type: 'select', options: ['operator', 'finance', 'support', 'superadmin'] }], onSubmit: async (v) => { await post('/admins', v); toast('Admin created'); reload(); } }) }, '+ New admin')),
+      h('div', { class: 'wrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['Username', 'Role', 'Active', 'Last login', ''].map((x) => h('th', {}, x)))), h('tbody', {}, list.map((a) => h('tr', {}, h('td', {}, a.username), h('td', {}, a.role), h('td', {}, a.is_active ? 'yes' : badge('blocked')), h('td', {}, fdt(a.last_login_at)),
+        h('td', {}, a.id === me.id ? h('span', { class: 'hint' }, 'you') : h('button', { class: 'btn sm', onclick: () => form({ title: 'Edit ' + a.username, submit: 'Save', fields: [{ name: 'role', label: 'Role', type: 'select', options: ['operator', 'finance', 'support', 'superadmin'], value: a.role }, { name: 'is_active', label: 'Active', type: 'select', options: ['true', 'false'], value: String(a.is_active) }, { name: 'password', label: 'Reset password (optional)', type: 'password' }], onSubmit: async (v) => { const body = { role: v.role, is_active: v.is_active === 'true' }; if (v.password) body.password = v.password; await api('/admins/' + a.id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Saved'); reload(); } }) }, 'Edit'))))))));
+  };
+
+  // ---------- shell, routing, auth
+  const NAV = [['dashboard', 'Dashboard', 'dashboard'], ['rooms', 'Rooms', 'auctions:read'], ['users', 'Players', 'users:read'], ['payments', 'Payments', 'payments:read'], ['ledger', 'Ledger', 'ledger:read'], ['reports', 'Reports', 'reports:read'], ['prizes', 'Prizes', 'prizes'], ['audit', 'Audit log', 'audit:read'], ['admins', 'Admins', 'admins:manage']];
+  async function route() {
+    if (!me) return;
+    const [name = 'dashboard', arg] = location.hash.replace(/^#\/?/, '').split('/');
+    const entry = NAV.find((n) => n[0] === name) && can(NAV.find((n) => n[0] === name)[2]) ? name : 'dashboard';
+    document.querySelectorAll('nav a[data-r]').forEach((a) => a.classList.toggle('on', a.dataset.r === entry));
+    const root = h('div', {}); document.getElementById('content').replaceChildren(root);
+    try { await pages[entry](root, arg); } catch (e) { if (token) root.replaceChildren(h('div', { class: 'err' }, e.message)); }
+  }
+  function shell() {
+    app.replaceChildren(h('div', { id: 'shell' }, h('nav', {}, h('h1', {}, 'Low', h('span', {}, 'Bid'), ' Admin'),
+      NAV.filter((n) => can(n[2])).map((n) => h('a', { 'data-r': n[0], onclick: () => { location.hash = '#/' + n[0]; if (location.hash === '#/' + n[0]) route(); } }, n[1])), h('div', { class: 'sp' }),
+      h('small', {}, `${me.username} (${me.role})`), h('a', { onclick: () => form({ title: 'Change password', submit: 'Change', fields: [{ name: 'current_password', label: 'Current password', type: 'password' }, { name: 'new_password', label: 'New password', type: 'password', hint: 'Min 12 characters with letters and digits' }], onSubmit: async (v) => { const r = await post('/change-password', v); token = r.token; try { sessionStorage.setItem('adm_token', token); } catch (e) {} toast('Password changed'); } }) }, 'Change password'), h('a', { onclick: logout }, 'Sign out')),
+      h('main', { id: 'content' })));
+    route();
+  }
+  function loginView(msg) {
+    const u = h('input', { placeholder: 'Username', autocomplete: 'username' }), p = h('input', { type: 'password', placeholder: 'Password', autocomplete: 'current-password' }), err = h('div', { class: 'err' }, msg || '');
+    const go = async () => { err.textContent = ''; try { const r = await post('/login', { username: u.value, password: p.value }); token = r.token; me = r.admin; try { sessionStorage.setItem('adm_token', token); } catch (e) {} shell(); } catch (e) { err.textContent = e.message; } };
+    p.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    app.replaceChildren(h('div', { id: 'login' }, h('div', { class: 'card' }, h('h2', {}, 'Low', h('span', { style: 'color:var(--gold)' }, 'Bid'), ' Admin'), h('div', { class: 'f' }, u), h('div', { class: 'f' }, p), err, h('button', { class: 'btn pri', style: 'width:100%', onclick: go }, 'Sign in'))));
+    u.focus();
+  }
+  function logout() { token = null; me = null; try { sessionStorage.removeItem('adm_token'); } catch (e) {} closeModal(); loginView(); }
+  window.addEventListener('hashchange', route);
+  (async () => { if (!token) return loginView(); try { me = await api('/me'); shell(); } catch (e) { loginView(); } })();
+})();
+</script>
+</body>
+</html>
