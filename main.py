@@ -355,3 +355,37 @@ async def ws_endpoint(ws: WebSocket):
         ws_mgr.drop(ws)
     except Exception:
         ws_mgr.drop(ws)
+
+
+# ---------- winners ----------
+@app.get("/api/winners")
+async def get_winners():
+    async with SessionLocal() as s:
+        auctions = (await s.execute(
+            select(Auction)
+            .where(Auction.status == "ended", Auction.winner_id.is_not(None))
+            .order_by(Auction.id.desc())
+            .limit(50)
+        )).scalars().all()
+    out = []
+    for a in auctions:
+        winner = await s.get(User, a.winner_id)
+        if not winner:
+            continue
+        # Mask phone: +251 9*** *** 42
+        ph = winner.phone_number
+        masked = f"+251 {ph[4:7]}*** *** {ph[-2:]}" if ph.startswith("+251") and len(ph) >= 12 else ph
+        out.append({
+            "auction_id": a.id,
+            "title": a.title,
+            "image_url": a.image_url,
+            "market_value": float(a.market_value),
+            "winning_bid": a.lowest_unique_bid,
+            "winner_phone_masked": masked,
+            "winner_city": a.winner_city,
+            "winner_quote": a.winner_quote,
+            "winner_photo_url": a.winner_photo_url,
+            "winner_video_url": a.winner_video_url,
+            "ended_at": a.ends_at.isoformat() + "Z" if a.ends_at else None,
+        })
+    return out

@@ -20,6 +20,12 @@
   .method-btn.disabled{opacity:.5;pointer-events:none}
   .method-btn:not(.disabled):hover{border-color:#94a3b8}
   .bid-status{display:inline-flex;align-items:center;gap:1px;padding:1px 6px;border-radius:9999px;font-size:10px;font-weight:600}
+  .stepper-btn{width:44px;height:44px;flex-shrink:0}
+  .stepper-input{flex:1;min-width:0;height:44px;text-align:center;font-size:1rem}
+  .winner-video{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px}
+  .winner-photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px}
+  .lang-btn{padding:6px 10px;border-radius:8px;font-weight:600;font-size:12px;border:1px solid #e2e8f0;background:#fff;color:#475569}
+  .lang-btn.active{background:#10b981;border-color:#10b981;color:#fff}
 </style>
 </head>
 <body class="min-h-screen pb-20 overflow-x-hidden">
@@ -30,6 +36,7 @@
     </div>
     <span id="dot" class="w-2.5 h-2.5 rounded-full bg-slate-300 shrink-0" title="live" aria-label="Connection status"></span>
     <div class="flex-1 min-w-0"></div>
+    <button id="langBtn" class="lang-btn shrink-0 whitespace-nowrap touch-target" aria-label="Language">EN</button>
     <button id="phone" class="text-xs sm:text-sm bg-slate-100 text-slate-700 rounded-full px-3 py-1.5 touch-target whitespace-nowrap shrink-0" aria-label="Account"></button>
     <div id="bal" class="text-sm font-bold bg-emerald-50 text-emerald-700 rounded-full px-3 py-1.5 touch-target shrink-0 whitespace-nowrap">ETB —</div>
     <button id="topup" class="text-sm font-semibold bg-emerald-600 text-white rounded-full px-3 py-1.5 touch-target shrink-0 whitespace-nowrap">+ Top Up</button>
@@ -41,18 +48,18 @@
     <div class="grid grid-cols-3 gap-2 text-center">
       <div class="bg-white rounded-xl p-3 border border-slate-200 touch-target">
         <div class="w-8 h-8 mx-auto mb-1.5 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 font-bold text-sm">1</div>
-        <div class="text-xs font-medium text-slate-700">Deposit</div>
-        <div class="text-[10px] text-slate-500">Add ETB via Chapa/Telebirr/CBE</div>
+        <div class="text-xs font-medium text-slate-700" data-i18n="how1_title">Deposit</div>
+        <div class="text-[10px] text-slate-500" data-i18n="how1_desc">Add ETB via Chapa/Telebirr/CBE</div>
       </div>
       <div class="bg-white rounded-xl p-3 border border-slate-200 touch-target">
         <div class="w-8 h-8 mx-auto mb-1.5 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">2</div>
-        <div class="text-xs font-medium text-slate-700">Bid</div>
-        <div class="text-[10px] text-slate-500">Place unique bids on items</div>
+        <div class="text-xs font-medium text-slate-700" data-i18n="how2_title">Bid</div>
+        <div class="text-[10px] text-slate-500" data-i18n="how2_desc">Place unique bids on items</div>
       </div>
       <div class="bg-white rounded-xl p-3 border border-slate-200 touch-target">
         <div class="w-8 h-8 mx-auto mb-1.5 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 font-bold text-sm">3</div>
-        <div class="text-xs font-medium text-slate-700">Win</div>
-        <div class="text-[10px] text-slate-500">Lowest unique bid wins</div>
+        <div class="text-xs font-medium text-slate-700" data-i18n="how3_title">Win</div>
+        <div class="text-[10px] text-slate-500" data-i18n="how3_desc">Lowest unique bid wins</div>
       </div>
     </div>
   </section>
@@ -62,20 +69,27 @@
 
   <!-- Flash Rooms Section -->
   <section id="secRooms" class="mb-6 rounded-2xl p-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200" aria-labelledby="rooms-heading">
-    <h2 id="rooms-heading" class="font-bold text-lg mb-3 flex items-center gap-2">⚡ FLASH ROOMS <span class="text-[10px] bg-amber-400 text-amber-950 rounded-full px-2 py-0.5">LIMITED SLOTS</span></h2>
+    <h2 id="rooms-heading" class="font-bold text-lg mb-3 flex items-center gap-2">⚡ <span data-i18n="flash_rooms">FLASH ROOMS</span> <span class="text-[10px] bg-amber-400 text-amber-950 rounded-full px-2 py-0.5" data-i18n="limited_slots">LIMITED SLOTS</span></h2>
     <div id="rooms" class="grid gap-3 sm:grid-cols-2"></div>
-    <p id="roomsEmpty" class="text-sm text-slate-500 text-center py-4 hidden">No flash rooms right now.</p>
+    <p id="roomsEmpty" class="text-sm text-slate-500 text-center py-4 hidden" data-i18n="no_rooms">No flash rooms right now.</p>
   </section>
 
   <!-- Bidded Items Section -->
   <section id="secItems" class="mb-6" aria-labelledby="items-heading">
-    <h2 id="items-heading" class="font-bold text-lg mb-3">🛍️ BIDDED ITEMS</h2>
+    <h2 id="items-heading" class="font-bold text-lg mb-3">🛍️ <span data-i18n="bidded_items">BIDDED ITEMS</span></h2>
     <div id="items" class="grid gap-3 sm:grid-cols-2"></div>
-    <p id="itemsEmpty" class="text-sm text-slate-500 text-center py-4 hidden">No items right now.</p>
+    <p id="itemsEmpty" class="text-sm text-slate-500 text-center py-4 hidden" data-i18n="no_items">No items right now.</p>
+  </section>
+
+  <!-- Winners Section -->
+  <section id="secWinners" class="mb-6 hidden" aria-labelledby="winners-heading">
+    <h2 id="winners-heading" class="font-bold text-lg mb-3 flex items-center gap-2">🏆 <span data-i18n="past_winners">PAST WINNERS</span></h2>
+    <div id="winners" class="grid gap-4 sm:grid-cols-2"></div>
+    <p id="winnersEmpty" class="text-sm text-slate-500 text-center py-4" data-i18n="no_winners">No past winners yet.</p>
   </section>
 </main>
 
-<!-- Modal (reused for login, topup, checkout) -->
+<!-- Modal (reused for login, topup) -->
 <div id="modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div id="mbox" class="bg-white rounded-2xl p-5 w-full max-w-sm max-h-[90vh] overflow-y-auto"></div>
 </div>
@@ -85,12 +99,12 @@
   <div class="fixed inset-0 bg-black/50" onclick="closeCheckout()"></div>
   <div class="fixed bottom-0 left-0 right-0 sm:max-w-md sm:mx-auto sm:rounded-t-2xl sm:rounded-b-none sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-50 bg-white sheet-enter max-h-[90vh] flex flex-col" style="border-radius:1.5rem 1.5rem 0 0;">
     <div class="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
-      <h3 id="checkout-title" class="font-bold text-lg">Checkout</h3>
+      <h3 id="checkout-title" class="font-bold text-lg" data-i18n="checkout">Checkout</h3>
       <button onclick="closeCheckout()" class="text-slate-500 hover:text-slate-700 text-2xl leading-none p-1">×</button>
     </div>
-    <div id="checkoutBody" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
-    <div class="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 shrink-0 safe-area-bottom">
-      <button id="checkoutPayBtn" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target disabled:opacity-50 disabled:cursor-not-allowed" disabled>Pay & Place Bid</button>
+    <div id="checkoutBody" class="flex-1 overflow-y-auto p-4 space-y-4 pb-6"></div>
+    <div class="sticky bottom-0 bg-white border-t border-slate-100 px-4 py-3 shrink-0 safe-area-bottom">
+      <button id="checkoutPayBtn" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target disabled:opacity-50 disabled:cursor-not-allowed" disabled data-i18n="pay_place_bid">Pay & Place Bid</button>
     </div>
   </div>
 </div>
@@ -101,7 +115,7 @@
 <script>
 const $=s=>document.querySelector(s);
 const $$=s=>document.querySelectorAll(s);
-let token=localStorage.getItem("t")||"", me=null, filter="all", cards={}, data=[], cfg={};
+let token=localStorage.getItem("t")||"", me=null, filter="all", cards={}, data=[], cfg={}, lang=localStorage.getItem("lang")||"en";
 
 const ST={
   leading:["bg-emerald-500 text-white","🟢 Leading"],
@@ -109,6 +123,91 @@ const ST={
   duplicated:["bg-amber-400 text-amber-950","🟡 Duplicated"],
   closed:["bg-red-500 text-white","🔴 Closed"]
 };
+
+const TRANSLATIONS = {
+  en: {
+    how1_title:"Deposit", how1_desc:"Add ETB via Chapa/Telebirr/CBE",
+    how2_title:"Bid", how2_desc:"Place unique bids on items",
+    how3_title:"Win", how3_desc:"Lowest unique bid wins",
+    flash_rooms:"FLASH ROOMS", limited_slots:"LIMITED SLOTS", bidded_items:"BIDDED ITEMS", past_winners:"PAST WINNERS",
+    no_rooms:"No flash rooms right now.", no_items:"No items right now.", no_winners:"No past winners yet.",
+    all:"All", rooms:"⚡ FLASH ROOMS", items:"🛍️ BIDDED ITEMS", winners:"🏆 WINNERS",
+    slots_left:"Slots Left", filled:"filled", bid_fee_label:"/ bid",
+    single_bid:"Single Bid", multi_bid_pack:"Multi-Bid Pack",
+    consecutive:"Consecutive", random_unique:"Random Unique", start_num:"Start #",
+    total:"Total:", buy_pack:"Buy Pack",
+    place_bid:"Place Bid", my_bids:"My Bids",
+    checkout:"Checkout", payment_method:"Payment Method",
+    wallet_label:"A BID Wallet", telebirr_label:"Telebirr (via Chapa)", cbebirr_label:"CBE Birr (via Chapa)", chapa_label:"Ebirr / M-Pesa / Card (via Chapa)",
+    insufficient:"Insufficient (need {total}, have {bal})", balance:"Balance: {bal}",
+    wallet_low:"Wallet balance too low. Top up or choose another method.",
+    pay_place_bid:"Pay & Place Bid",
+    login_title:"Log in to A BID", phone_placeholder:"+2519XXXXXXXX", otp_placeholder:"6-digit code", send_code:"Send code", verify_continue:"Verify & continue",
+    topup_title:"Top Up Wallet", topup_continue:"Continue",
+    winner_retail:"Retail Value:", winner_bid:"Winning Bid:", winner_city:"City:", winner_quote:"Quote:",
+    status_leading:"Leading", status_unique:"Unique", status_duplicated:"Duplicated", status_closed:"Closed", status_won:"You won!",
+    room_capacity:"Room Capacity",
+  },
+  am: {
+    how1_title:"ገቢ", how1_desc:"ETB በ ቻፓ/ቴሌቢር/ሲቢኤ ያስገቡ",
+    how2_title:"ግዛ", how2_desc:"ብቁ ግዛት ላይ ይግዙ",
+    how3_title:"ስሩ", how3_desc:"የተለየ የቀሪ ግዛ ይሻላል",
+    flash_rooms:"⚡ ፋሽ ሆሮች", limited_slots:"የተገበዘ ክፍሎች", bidded_items:"🛍️ የተገዛ እቃዎች", past_winners:"የቀድሞ ስሮች",
+    no_rooms:"ሁለገብ ፋሽ ሆሮች የለም።", no_items:"ሁለገብ እቃዎች የለም።", no_winners:"ሁለገብ ስሮች የለም።",
+    all:"ሁሉም", rooms:"⚡ ፋሽ ሆሮች", items:"🛍️ የተገዛ እቃዎች", winners:"🏆 ስሮች",
+    slots_left:"ቀሪ ክፍሎች", filled:"ተሞልቷል", bid_fee_label:"/ ግዛ",
+    single_bid:"አንድ ግዛ", multi_bid_pack:"ብዙ ግዛት ፓክ",
+    consecutive:"ቀጣይ", random_unique:"ማሳሪያ ብቁ", start_num:"የመጀመሪያ #",
+    total:"ጠቅላላ:", buy_pack:"ፓክ ገዛ",
+    place_bid:"ግዛ አስገብ", my_bids:"የእኔ ግዛት",
+    checkout:"ክፍያ", payment_method:"የክፍያ ዘዴ",
+    wallet_label:"A BID ባለብስ", telebirr_label:"ቴሌቢር (በ ቻፓ)", cbebirr_label:"ሲቢኤ ቢር (በ ቻፓ)", chapa_label:"ኤቢር/ማፒሳ/ካርድ (በ ቻፓ)",
+    insufficient:"ያልተሳካ (ያስፈልጋል {total}, አሁን {bal})", balance:"ቀሪ ብድር: {bal}",
+    wallet_low:"የባለብስ ብድር ቀሪ ነው። ያስገቡ ወይም ሌላ ዘዴ ይምረጡ።",
+    pay_place_bid:"ክፍያ እና ግዛ አስገብ",
+    login_title:"ወደ A BID ግባ", phone_placeholder:"+2519XXXXXXXX", otp_placeholder:"6-ቁጥር ኮድ", send_code:"ኮድ ላክ", verify_continue:"ማረጋገጥ እና ቀጥል",
+    topup_title:"ባለብስ ያስገቡ", topup_continue:"ቀጥል",
+    winner_retail:"የገበያ ዋጋ:", winner_bid:"የስሩ ግዛ:", winner_city:"ከተማ:", winner_quote:"ጉዳይ:",
+    status_leading:"በፊት ነው", status_unique:"ብቁ", status_duplicated:"ተደጋጋሚ", status_closed:"ተዘጋጁል", status_won:"ስሩ!",
+    room_capacity:"የሆር አቅም",
+  }
+};
+
+function t(key, params={}){
+  const dict = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  let str = dict[key] || key;
+  Object.entries(params).forEach(([k,v])=>{ str = str.replace(new RegExp("{"+k+"}","g"), v); });
+  return str;
+}
+
+function applyTranslations(){
+  $$("[data-i18n]").forEach(el=>{
+    const key = el.dataset.i18n;
+    el.textContent = t(key);
+  });
+  // Special handling for placeholders
+  const ph = $("#ph"); if(ph) ph.placeholder = t("phone_placeholder");
+  const otp = $("#otp"); if(otp) otp.placeholder = t("otp_placeholder");
+  // Update dynamic texts
+  if($("#go")) $("#go").textContent = t($("#go").dataset.i18n || "send_code");
+  if($("#pay")) $("#pay").textContent = t($("#pay").dataset.i18n || "topup_continue");
+  // Update pills
+  pills();
+  // Update checkout if open
+  if(!$("#checkoutSheet").classList.contains("hidden")) renderCheckoutSheet();
+  // Update cards
+  Object.values(cards).forEach(el=>{ if(el.a) upd(el, el.a); });
+  // Update winners
+  renderWinners();
+}
+
+function setLang(l){
+  lang = l;
+  localStorage.setItem("lang", l);
+  document.documentElement.lang = l;
+  $$("#langBtn").forEach(b=>b.textContent = l==="en"?"EN":"አማርኛ");
+  applyTranslations();
+}
 
 function toast(msg, bad=false){
   const t=$("#toast");
@@ -154,12 +253,12 @@ function requireAuth(fn){
 }
 
 function loginModal(){
-  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4">Log in to A BID</h3>
-  <input id="ph" type="tel" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="+2519XXXXXXXX" value="+251" autocomplete="tel">
+  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4" data-i18n="login_title">${t("login_title")}</h3>
+  <input id="ph" type="tel" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="${t("phone_placeholder")}" value="+251" autocomplete="tel">
   <div id="otpBox" class="hidden">
-    <input id="otp" type="text" inputmode="numeric" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3 text-center tracking-widest" placeholder="6-digit code" maxlength="6" autocomplete="one-time-code">
+    <input id="otp" type="text" inputmode="numeric" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3 text-center tracking-widest" placeholder="${t("otp_placeholder")}" maxlength="6" autocomplete="one-time-code">
   </div>
-  <button id="go" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">Send code</button>`);
+  <button id="go" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target" data-i18n="send_code">${t("send_code")}</button>`);
   let sent=false;
   $("#go").onclick=async()=>{
     try{
@@ -167,7 +266,8 @@ function loginModal(){
         await api("/api/auth/send-otp",{method:"POST",body:JSON.stringify({phone_number:$("#ph").value.trim()})});
         sent=true;
         $("#otpBox").classList.remove("hidden");
-        $("#go").textContent="Verify & continue";
+        $("#go").textContent=t("verify_continue");
+        $("#go").dataset.i18n="verify_continue";
       }else{
         const d=await api("/api/auth/verify-otp",{method:"POST",body:JSON.stringify({phone_number:$("#ph").value.trim(),code:$("#otp").value.trim()})});
         token=d.token;
@@ -182,11 +282,11 @@ function loginModal(){
 $("#topup").onclick=()=>{ if(!token) return loginModal(); topupModal(); };
 
 function topupModal(){
-  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4">Top Up Wallet</h3>
+  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4" data-i18n="topup_title">${t("topup_title")}</h3>
   <div class="grid grid-cols-4 gap-2 mb-3">${[50,100,200,500].map(v=>`<button class="pre border border-slate-300 rounded-xl py-3 text-sm touch-target" data-v="${v}">${v} ETB</button>`).join("")}</div>
   <input id="amt" type="number" min="10" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Amount in ETB" value="100">
   <select id="prov" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-4"><option value="chapa">Chapa</option><option value="telebirr">Telebirr</option><option value="cbe">CBE Birr</option></select>
-  <button id="pay" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">Continue</button>`);
+  <button id="pay" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target" data-i18n="topup_continue">${t("topup_continue")}</button>`);
   $$(".pre").forEach(b=>b.onclick=()=>$("#amt").value=b.dataset.v);
   $("#pay").onclick=async()=>{
     const body=JSON.stringify({amount:$("#amt").value,provider:$("#prov").value});
@@ -217,13 +317,17 @@ async function pollDeposit(ref,n=0){
 }
 
 function pills(){
-  $("#pills").innerHTML=[["all","All"],["rooms","⚡ FLASH ROOMS"],["items","🛍️ BIDDED ITEMS"]].map(([k,l])=>`<button role="tab" data-k="${k}" class="px-4 py-2 rounded-full text-sm font-semibold border touch-target whitespace-nowrap shrink-0 ${filter===k?"bg-emerald-600 text-white border-emerald-600":"bg-white border-slate-200"}" aria-selected="${filter===k}">${l}</button>`).join("");
+  const labels = {all:t("all"), rooms:t("rooms"), items:t("items"), winners:t("winners")};
+  const keys = ["all","rooms","items","winners"];
+  $("#pills").innerHTML=keys.map(k=>`<button role="tab" data-k="${k}" class="px-4 py-2 rounded-full text-sm font-semibold border touch-target whitespace-nowrap shrink-0 ${filter===k?"bg-emerald-600 text-white border-emerald-600":"bg-white border-slate-200"}" aria-selected="${filter===k}">${labels[k]}</button>`).join("");
   $$("#pills button").forEach(b=>b.onclick=()=>{ filter=b.dataset.k; pills(); applyFilter(); });
 }
 
 function applyFilter(){
-  $("#secRooms").classList.toggle("hidden", filter==="items");
-  $("#secItems").classList.toggle("hidden", filter==="rooms");
+  $("#secRooms").classList.toggle("hidden", filter==="items" || filter==="winners");
+  $("#secItems").classList.toggle("hidden", filter==="rooms" || filter==="winners");
+  $("#secWinners").classList.toggle("hidden", filter!=="winners");
+  if(filter==="winners") loadWinners();
 }
 
 function mkCard(a){
@@ -243,36 +347,36 @@ function mkCard(a){
       </div>
       <div data-k="badge" class="text-[11px] h-fit rounded-full px-2 py-1 font-semibold whitespace-nowrap hidden shrink-0"></div>
     </div>
-    <div class="text-sm mb-2"><span class="line-through text-slate-400" data-k="val"></span> <span class="font-semibold text-emerald-700" data-k="fee"></span> / bid</div>
+    <div class="text-sm mb-2"><span class="line-through text-slate-400" data-k="val"></span> <span class="font-semibold text-emerald-700" data-k="fee"></span> <span data-i18n="bid_fee_label">${t("bid_fee_label")}</span></div>
     <div data-k="cap" class="mb-2"></div>
     <div class="text-xs text-slate-600 flex justify-between mb-3"><span data-k="bids"></span><span data-k="timer" class="font-mono font-semibold"></span></div>
     <div data-k="ctl" class="space-y-3">
       <div class="flex bg-slate-100 rounded-xl p-1 text-sm">
-        <button data-t="single" class="tab flex-1 rounded-lg py-2 touch-target font-medium">Single Bid</button>
-        <button data-t="pack" class="tab flex-1 rounded-lg py-2 touch-target font-medium">Multi-Bid Pack</button>
+        <button data-t="single" class="tab flex-1 rounded-lg py-2 touch-target font-medium" data-i18n="single_bid">${t("single_bid")}</button>
+        <button data-t="pack" class="tab flex-1 rounded-lg py-2 touch-target font-medium" data-i18n="multi_bid_pack">${t("multi_bid_pack")}</button>
       </div>
-      <div data-p="single" class="flex flex-col sm:flex-row gap-2">
-        <button class="dec w-12 sm:w-10 rounded-xl bg-slate-100 font-bold text-xl touch-target" aria-label="Decrease">−</button>
-        <input type="number" min="1" value="1" class="num flex-1 input-base text-center border border-slate-300 rounded-xl py-3 touch-target" inputmode="numeric">
-        <button class="inc w-12 sm:w-10 rounded-xl bg-slate-100 font-bold text-xl touch-target" aria-label="Increase">+</button>
-        <button class="place bg-emerald-600 text-white rounded-xl px-4 py-3 font-semibold touch-target">Place Bid</button>
+      <div data-p="single" class="flex items-center gap-2">
+        <button class="dec stepper-btn rounded-xl bg-slate-100 font-bold text-xl touch-target" aria-label="Decrease">−</button>
+        <input type="number" min="1" value="1" class="stepper-input input-base border border-slate-300 rounded-xl touch-target" inputmode="numeric">
+        <button class="inc stepper-btn rounded-xl bg-slate-100 font-bold text-xl touch-target" aria-label="Increase">+</button>
+        <button class="place bg-emerald-600 text-white rounded-xl px-4 py-3 font-semibold touch-target shrink-0 whitespace-nowrap" data-i18n="place_bid">${t("place_bid")}</button>
       </div>
       <div data-p="pack" class="hidden space-y-3">
         <div class="grid grid-cols-3 gap-2">${[10,50,100].map(n=>`<button data-n="${n}" class="pk border border-slate-300 rounded-xl py-2.5 text-sm touch-target">${n} Bids</button>`).join("")}</div>
         <div class="flex gap-2">
-          <button data-m="consec" class="md flex-1 border border-slate-300 rounded-xl py-2.5 touch-target font-medium">Consecutive</button>
-          <button data-m="random" class="md flex-1 border border-slate-300 rounded-xl py-2.5 touch-target font-medium">Random Unique</button>
+          <button data-m="consec" class="md flex-1 border border-slate-300 rounded-xl py-2.5 touch-target font-medium" data-i18n="consecutive">${t("consecutive")}</button>
+          <button data-m="random" class="md flex-1 border border-slate-300 rounded-xl py-2.5 touch-target font-medium" data-i18n="random_unique">${t("random_unique")}</button>
         </div>
         <div data-k="startRow" class="flex items-center gap-2 text-sm hidden">
-          <span class="text-slate-600">Start #</span>
+          <span class="text-slate-600" data-i18n="start_num">${t("start_num")}</span>
           <input type="number" min="1" value="1" class="start w-20 input-base border border-slate-300 rounded-xl px-3 py-2.5 text-center touch-target" inputmode="numeric">
         </div>
-        <div class="text-sm text-slate-600">Total: <b data-k="total" class="font-semibold text-emerald-700"></b></div>
-        <button class="buy w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">Buy Pack • <span data-k="buyTotal" class="font-normal"></span></button>
+        <div class="text-sm text-slate-600"><span data-i18n="total">${t("total")}</span> <b data-k="total" class="font-semibold text-emerald-700"></b></div>
+        <button class="buy w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target" data-i18n="buy_pack">${t("buy_pack")} • <span data-k="buyTotal" class="font-normal"></span></button>
       </div>
     </div>
     <div data-k="mine" class="mt-3 hidden">
-      <button class="tgl text-xs font-semibold text-slate-600 flex items-center gap-1">▸ My Bids</button>
+      <button class="tgl text-xs font-semibold text-slate-600 flex items-center gap-1" data-i18n="my_bids">▸ ${t("my_bids")}</button>
       <div class="list hidden flex flex-wrap gap-1 mt-2"></div>
     </div>`;
 
@@ -302,7 +406,7 @@ function mkCard(a){
   q(".dec").onclick=()=>{ const i=q(".num"); i.value=Math.max(1, (+i.value||1)-1); };
   q(".inc").onclick=()=>{ const i=q(".num"); i.value=(+i.value||0)+1; };
 
-  q(".tgl").onclick=()=>{ const l=q(".list"); l.classList.toggle("hidden"); q(".tgl").innerHTML=(l.classList.contains("hidden")?"▸":"▾")+' My Bids'; };
+  q(".tgl").onclick=()=>{ const l=q(".list"); l.classList.toggle("hidden"); q(".tgl").innerHTML=(l.classList.contains("hidden")?"▸":"▾")+' '+t("my_bids"); };
 
   // Single bid: open checkout sheet
   q(".place").onclick=e=>{
@@ -370,16 +474,23 @@ function upd(el,a){
 
   const left=Math.max(0, a.max_slots-a.filled_slots);
   const pct=Math.min(100, a.filled_slots/a.max_slots*100);
-  q("cap").innerHTML=a.is_room?`<div class="flex justify-between text-xs font-semibold"><span>Room Capacity</span><span class="${left<=10?"text-red-600 animate-pulse":"text-emerald-700"}">${left} Slots Left</span></div><div class="h-2 bg-slate-100 rounded-full mt-1 overflow-hidden"><div class="h-full ${pct>80?"bg-red-500":"bg-emerald-500"} transition-all" style="width:${pct}%"></div></div><div class="text-[11px] text-slate-500 mt-1">${a.filled_slots} / ${a.max_slots} filled</div>`:"";
+  const slotsLeftText = t("slots_left");
+  const filledText = t("filled");
+  q("cap").innerHTML=a.is_room?`<div class="flex justify-between text-xs font-semibold"><span data-i18n="room_capacity">${t("room_capacity")}</span><span class="${left<=10?"text-red-600 animate-pulse":"text-emerald-700"}">${left} ${slotsLeftText}</span></div><div class="h-2 bg-slate-100 rounded-full mt-1 overflow-hidden"><div class="h-full ${pct>80?"bg-red-500":"bg-emerald-500"} transition-all" style="width:${pct}%"></div></div><div class="text-[11px] text-slate-500 mt-1">${a.filled_slots} / ${a.max_slots} ${filledText}</div>`:"";
 
-  q("bids").textContent=a.is_room?"":`${a.filled_slots.toLocaleString()} bids cast`;
+  q("bids").textContent=a.is_room?"":`${a.filled_slots.toLocaleString()} ${t("bids")}`;
 
   el.ends=a.ends_at?new Date(a.ends_at).getTime():null;
 
   const b=q("badge"), s=ST[a.user_status];
   b.classList.toggle("hidden", !s);
-  if(s){ b.className="text-[11px] h-fit rounded-full px-2 py-1 font-semibold whitespace-nowrap "+s[0]; b.textContent=s[1]; }
-  if(a.won){ b.className="text-[11px] h-fit rounded-full px-2 py-1 font-semibold bg-yellow-400 text-yellow-950"; b.textContent="🏆 You won!"; }
+  if(s){ 
+    const statusLabels = {leading:t("status_leading"), unique:t("status_unique"), duplicated:t("status_duplicated"), closed:t("status_closed")};
+    const label = statusLabels[a.user_status] || s[1];
+    b.className="text-[11px] h-fit rounded-full px-2 py-1 font-semibold whitespace-nowrap "+s[0]; 
+    b.textContent=label; 
+  }
+  if(a.won){ b.className="text-[11px] h-fit rounded-full px-2 py-1 font-semibold bg-yellow-400 text-yellow-950"; b.textContent=t("status_won"); }
 
   const live=a.status==="active";
   q("ctl").classList.toggle("hidden", !live);
@@ -446,6 +557,39 @@ function connect(){
   ws.onerror=()=>ws.close();
 }
 
+// ===== Winners =====
+async function loadWinners(){
+  try{
+    const w = await api("/api/winners");
+    renderWinners(w);
+  }catch(e){}
+}
+
+function renderWinners(list){
+  const container = $("#winners");
+  if(!container) return;
+  const data = list || (window.winnersCache || []);
+  if(!list) window.winnersCache = data;
+  if(!data.length){
+    container.innerHTML = `<p class="text-sm text-slate-500 text-center py-8 col-span-2" data-i18n="no_winners">${t("no_winners")}</p>`;
+    return;
+  }
+  container.innerHTML = data.map(w=>`
+    <div class="card bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+      <div class="font-bold text-slate-900 mb-2">${w.title}</div>
+      ${w.winner_video_url ? `<video class="winner-video mb-3" controls playsinline src="${w.winner_video_url}" poster="${w.winner_photo_url||''}"></video>` : ''}
+      ${w.winner_photo_url && !w.winner_video_url ? `<img class="winner-photo mb-3" src="${w.winner_photo_url}" alt="${w.title}">` : ''}
+      <div class="grid grid-cols-2 gap-2 text-xs mb-2">
+        <div><span class="text-slate-500" data-i18n="winner_retail">${t("winner_retail")}</span> <span class="font-semibold text-emerald-700">${etb(w.market_value)}</span></div>
+        <div><span class="text-slate-500" data-i18n="winner_bid">${t("winner_bid")}</span> <span class="font-semibold text-blue-700">#${w.winning_bid}</span></div>
+        <div class="col-span-2"><span class="text-slate-500" data-i18n="winner_city">${t("winner_city")}</span> <span class="font-medium">${w.winner_city||"—"}</span></div>
+        <div class="col-span-2"><span class="text-slate-500" data-i18n="winner_phone">${t("winner_phone")||"Winner:"}</span> <span class="font-mono text-slate-700">${w.winner_phone_masked}</span></div>
+      </div>
+      ${w.winner_quote ? `<p class="text-sm text-slate-600 italic border-t border-slate-100 pt-2">"${w.winner_quote}"</p>` : ''}
+    </div>
+  `).join("");
+}
+
 // ===== Checkout Sheet =====
 let checkoutState = { auction: null, bidAmounts: [], method: "wallet", polling: false };
 
@@ -477,10 +621,10 @@ function renderCheckoutSheet(){
     : `${amts.length} bids: ${amts.slice(0,5).join(", ")}${amts.length>5?" …":""}`;
 
   const methods = [
-    {id:"wallet", label:"A BID Wallet", icon:"💰", desc: canWallet ? `Balance: ${etb(walletBal)}` : `Insufficient (need ${etb(total)}, have ${etb(walletBal)})`, disabled: !canWallet},
-    {id:"telebirr", label:"Telebirr (via Chapa)", icon:"📱", desc:"Pay with Telebirr", disabled:false},
-    {id:"cbebirr", label:"CBE Birr (via Chapa)", icon:"🏦", desc:"Pay with CBE Birr", disabled:false},
-    {id:"chapa", label:"Ebirr / M-Pesa / Card (via Chapa)", icon:"💳", desc:"Ebirr, M-Pesa, Visa/Mastercard", disabled:false},
+    {id:"wallet", label:t("wallet_label"), icon:"💰", desc: canWallet ? t("balance",{bal:etb(walletBal)}) : t("insufficient",{total:etb(total),bal:etb(walletBal)}), disabled: !canWallet},
+    {id:"telebirr", label:t("telebirr_label"), icon:"📱", desc:"Pay with Telebirr", disabled:false},
+    {id:"cbebirr", label:t("cbebirr_label"), icon:"🏦", desc:"Pay with CBE Birr", disabled:false},
+    {id:"chapa", label:t("chapa_label"), icon:"💳", desc:"Ebirr, M-Pesa, Visa/Mastercard", disabled:false},
   ];
 
   $("#checkoutBody").innerHTML = `
@@ -489,13 +633,13 @@ function renderCheckoutSheet(){
         <div class="font-semibold text-slate-900">${a.title}</div>
         <div class="text-sm text-slate-600 mt-1">${bidSummary}</div>
         <div class="flex justify-between mt-2 pt-2 border-t border-slate-200">
-          <span class="font-medium text-slate-700">Total</span>
+          <span class="font-medium text-slate-700" data-i18n="total">${t("total")}</span>
           <span class="font-bold text-emerald-700 text-lg">${etb(total)}</span>
         </div>
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-2">Payment Method</label>
+        <label class="block text-sm font-medium text-slate-700 mb-2" data-i18n="payment_method">${t("payment_method")}</label>
         <div class="space-y-2" id="methodList">
           ${methods.map(m=>`
             <button type="button" class="method-btn w-full text-left rounded-xl p-4 flex items-center gap-3 touch-target ${m.disabled?"disabled":""}" data-method="${m.id}" ${m.disabled?"disabled":""}>
@@ -510,7 +654,7 @@ function renderCheckoutSheet(){
         </div>
       </div>
 
-      ${!canWallet ? `<p class="text-xs text-amber-700 bg-amber-50 rounded-lg p-3 flex items-center gap-2">⚠️ Wallet balance too low. Top up or choose another method.</p>` : ""}
+      ${!canWallet ? `<p class="text-xs text-amber-700 bg-amber-50 rounded-lg p-3 flex items-center gap-2">⚠️ ${t("wallet_low")}</p>` : ""}
 
       <div id="checkoutStatus" class="hidden p-3 rounded-lg text-sm"></div>
     </div>
@@ -558,7 +702,7 @@ function updatePayButton(){
   if(checkoutState.method === "wallet"){
     btn.textContent = `Pay ${etb(total)} & Place Bid (Wallet)`;
   }else{
-    const labels = {telebirr:"Telebirr", cbebirr:"CBE Birr", chapa:"Ebirr/M-Pesa/Card"};
+    const labels = {telebirr:t("telebirr_label"), cbebirr:t("cbebirr_label"), chapa:t("chapa_label")};
     btn.textContent = `Pay ${etb(total)} via ${labels[checkoutState.method] || "Chapa"}`;
   }
   btn.disabled = false;
@@ -627,9 +771,19 @@ async function pollBidCheckout(ref, attempts=0){
   setTimeout(()=>pollBidCheckout(ref, attempts+1), 4000);
 }
 
+// Language toggle
+$("#langBtn").onclick = () => {
+  setLang(lang === "en" ? "am" : "en");
+};
+
 (async()=>{
+  // Initial language
+  document.documentElement.lang = lang;
+  $("#langBtn").textContent = lang==="en"?"EN":"አማርኛ";
+  
   pills();
   applyFilter();
+  applyTranslations();
   try{ cfg=await api("/api/payments/config"); }catch(e){}
   paintMe();
   await sync();
