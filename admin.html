@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>A BID Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{background:#F8FAFC;color:#0f172a}
+  .card{animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+  .overflow-x-hidden{overflow-x:hidden}
+  .input-base{font-size:16px !important}
+  .touch-target{min-height:44px}
+  .pill-scroll{scrollbar-width:none;-ms-overflow-style:none}
+  .pill-scroll::-webkit-scrollbar{display:none}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .table-wrap table{min-width:600px}
+  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
+  .tab-btn{padding:10px 14px;border-radius:8px;font-weight:600;font-size:14px;white-space:nowrap}
+  .tab-btn.active{background:#10b981;color:#fff}
+  .tab-btn:not(.active){background:#fff;border:1px solid #e2e8f0;color:#475569}
+</style>
+</head>
+<body class="min-h-screen pb-20 overflow-x-hidden">
+<header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+  <div class="max-w-7xl mx-auto px-3 py-2 flex items-center gap-2 flex-wrap">
+    <div class="font-extrabold text-lg text-emerald-600 flex items-center gap-1">
+      A<span class="text-slate-900"> BID</span> <span class="text-xs font-normal text-slate-500">Admin</span>
+    </div>
+    <div class="flex-1 min-w-0"></div>
+    <button id="adminUser" class="text-xs sm:text-sm bg-slate-100 text-slate-700 rounded-full px-3 py-1.5 touch-target whitespace-nowrap shrink-0"></button>
+    <button id="logoutBtn" class="text-sm font-semibold bg-red-600 text-white rounded-full px-3 py-1.5 touch-target shrink-0 whitespace-nowrap">Logout</button>
+  </div>
+</header>
+<main class="max-w-7xl mx-auto px-3 pb-4">
+  <!-- Tabs -->
+  <div class="flex gap-2 my-4 pill-scroll overflow-x-auto pb-2" id="tabs" role="tablist" aria-label="Admin sections"></div>
+
+  <!-- Dashboard -->
+  <section id="secDashboard" class="space-y-4">
+    <h2 class="font-bold text-lg">Dashboard</h2>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Bid Revenue</div><div id="statRevenue" class="text-2xl font-bold text-emerald-700">—</div></div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Total Bids</div><div id="statBids" class="text-2xl font-bold text-blue-700">—</div></div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Platform Fees</div><div id="statPlatform" class="text-2xl font-bold text-emerald-700">—</div></div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Partner Shares</div><div id="statPartner" class="text-2xl font-bold text-amber-700">—</div></div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card sm:col-span-2"><div class="text-xs text-slate-500">Total Deposits</div><div id="statDeposits" class="text-2xl font-bold text-blue-700">—</div></div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card sm:col-span-2"><div class="text-xs text-slate-500">Wallet Liability</div><div id="statLiability" class="text-2xl font-bold text-red-700">—</div></div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Flash Rooms</div><div id="statRooms" class="text-2xl font-bold text-emerald-700">—</div></div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Bidded Items</div><div id="statItems" class="text-2xl font-bold text-blue-700">—</div></div>
+      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Pending Prizes</div><div id="statPrizes" class="text-2xl font-bold text-amber-700">—</div></div>
+    </div>
+  </section>
+
+  <!-- Auctions -->
+  <section id="secAuctions" class="hidden space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+      <h2 class="font-bold text-lg">Auctions</h2>
+      <button id="newAuctionBtn" class="bg-emerald-600 text-white rounded-xl px-4 py-2.5 font-semibold touch-target shrink-0">+ New Auction</button>
+    </div>
+    <div class="table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr class="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th class="px-3 py-2">ID</th><th class="px-3 py-2">Title</th><th class="px-3 py-2">Type</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Fee</th><th class="px-3 py-2">Slots</th><th class="px-3 py-2">Ends</th><th class="px-3 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="auctionsBody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Prizes -->
+  <section id="secPrizes" class="hidden space-y-4">
+    <h2 class="font-bold text-lg">Prizes</h2>
+    <div class="table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr class="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th class="px-3 py-2">Auction</th><th class="px-3 py-2">Winner</th><th class="px-3 py-2">Bid</th><th class="px-3 py-2">Value</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Action</th>
+          </tr>
+        </thead>
+        <tbody id="prizesBody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Users -->
+  <section id="secUsers" class="hidden space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+      <h2 class="font-bold text-lg">Users</h2>
+      <input id="userSearch" type="search" placeholder="Search phone..." class="input-base border border-slate-300 rounded-xl px-4 py-2.5 touch-target w-full sm:w-64" aria-label="Search users">
+    </div>
+    <div class="table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr class="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th class="px-3 py-2">ID</th><th class="px-3 py-2">Phone</th><th class="px-3 py-2">Balance</th><th class="px-3 py-2">Verified</th><th class="px-3 py-2">Blocked</th><th class="px-3 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Payments -->
+  <section id="secPayments" class="hidden space-y-4">
+    <h2 class="font-bold text-lg">Payments</h2>
+    <div class="table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr class="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <th class="px-3 py-2">Ref</th><th class="px-3 py-2">Provider</th><th class="px-3 py-2">Amount</th><th class="px-3 py-2">User</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Action</th>
+          </tr>
+        </thead>
+        <tbody id="paymentsBody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- Modal -->
+<div id="modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div id="mbox" class="bg-white rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-60 hidden px-4 py-2 rounded-full text-sm text-white"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+let token=localStorage.getItem("at")||"", adminUser=null;
+const TABS=[
+  {id:"dashboard",label:"Dashboard",icon:"📊",perm:"stats"},
+  {id:"auctions",label:"Flash Rooms & Items",icon:"⚡",perm:"auctions"},
+  {id:"prizes",label:"Prizes",icon:"🏆",perm:"prizes"},
+  {id:"users",label:"Users",icon:"👥",perm:"users"},
+  {id:"payments",label:"Payments",icon:"💳",perm:"payments"},
+];
+
+function toast(msg,bad=false){
+  const t=$("#toast");
+  t.textContent=msg;
+  t.className="fixed bottom-4 left-1/2 -translate-x-1/2 z-60 px-4 py-2 rounded-full text-sm text-white "+(bad?"bg-red-600":"bg-slate-900");
+  t.classList.remove("hidden");
+  setTimeout(()=>t.classList.add("hidden"),3500);
+}
+
+async function api(path,opts={}){
+  const h={"Content-Type":"application/json"};
+  if(token) h.Authorization="Bearer "+token;
+  const res=await fetch(path,{...opts,headers:h});
+  const d=await res.json().catch(()=>({}));
+  if(res.status===401&&token){ token=""; localStorage.removeItem("at"); adminUser=null; showLogin(); }
+  if(!res.ok) throw new Error(typeof d.detail==="string"?d.detail:"Request failed");
+  return d;
+}
+
+const etb=n=>"ETB "+Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
+
+function modal(html){
+  $("#mbox").innerHTML=html;
+  $("#modal").classList.remove("hidden");
+  document.body.style.overflow="hidden";
+}
+function closeModal(){
+  $("#modal").classList.add("hidden");
+  document.body.style.overflow="";
+}
+$("#modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
+
+function showLogin(){
+  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4">A BID Admin Login</h3>
+  <input id="auser" type="text" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Username" autocomplete="username">
+  <input id="apass" type="password" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Password" autocomplete="current-password">
+  <button id="alogin" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">Sign In</button>`);
+  $("#alogin").onclick=async()=>{
+    try{
+      const d=await api("/api/admin/login",{method:"POST",body:JSON.stringify({username:$("#auser").value,password:$("#apass").value})});
+      token=d.token; adminUser=d; localStorage.setItem("at",token); closeModal(); initTabs(); loadAll();
+    }catch(e){ toast(e.message,true); }
+  };
+}
+
+function paintHeader(){
+  $("#adminUser").textContent=adminUser?.username||"Admin";
+}
+$("#logoutBtn").onclick=()=>{ token=""; localStorage.removeItem("at"); adminUser=null; showLogin(); };
+
+function tabsHTML(){
+  return TABS.map(t=>`<button role="tab" data-tab="${t.id}" class="tab-btn ${t.id==="dashboard"?"active":""}" aria-selected="${t.id==="dashboard"}">${t.icon} ${t.label}</button>`).join("");
+}
+function initTabs(){
+  $("#tabs").innerHTML=tabsHTML();
+  $$("#tabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+}
+function switchTab(id){
+  TABS.forEach(t=>{
+    const sec=$("#sec"+t.id.charAt(0).toUpperCase()+t.id.slice(1));
+    const btn=$("#tabs button[data-tab='"+t.id+"']");
+    if(t.id===id){ sec?.classList.remove("hidden"); btn?.classList.add("active"); btn?.setAttribute("aria-selected","true"); }
+    else{ sec?.classList.add("hidden"); btn?.classList.remove("active"); btn?.setAttribute("aria-selected","false"); }
+  });
+}
+
+async function loadAll(){
+  await Promise.all([loadStats(), loadAuctions(), loadPrizes(), loadUsers(), loadPayments()]);
+}
+
+async function loadStats(){
+  try{
+    const d=await api("/api/admin/stats");
+    $("#statRevenue").textContent=etb(d.total_bid_revenue);
+    $("#statBids").textContent=d.total_bids_cast.toLocaleString();
+    $("#statPlatform").textContent=etb(d.platform_fees_collected);
+    $("#statPartner").textContent=etb(d.partner_shares_accrued);
+    $("#statDeposits").textContent=etb(d.total_deposits);
+    $("#statLiability").textContent=etb(d.wallet_liability);
+    $("#statRooms").textContent=d.active_flash_rooms;
+    $("#statItems").textContent=d.active_bidded_items;
+    $("#statPrizes").textContent=d.pending_prizes;
+  }catch(e){ toast(e.message,true); }
+}
+
+async function loadAuctions(){
+  try{
+    const d=await api("/api/admin/auctions?limit=100");
+    const tbody=$("#auctionsBody");
+    tbody.innerHTML=d.map(a=>`
+      <tr class="hover:bg-slate-50">
+        <td class="px-3 py-2 font-mono text-xs">${a.id}</td>
+        <td class="px-3 py-2 font-medium truncate max-w-xs">${a.title}</td>
+        <td class="px-3 py-2"><span class="badge ${a.is_room?"bg-emerald-100 text-emerald-700":"bg-blue-100 text-blue-700"}">${a.is_room?"⚡ Room":"🛍️ Item"}</span></td>
+        <td class="px-3 py-2"><span class="badge ${a.status==="active"?"bg-emerald-100 text-emerald-700":a.status==="ended"?"bg-slate-100 text-slate-700":"bg-red-100 text-red-700"}">${a.status}</span></td>
+        <td class="px-3 py-2 text-right">${etb(a.bid_fee)}</td>
+        <td class="px-3 py-2 text-right">${a.filled_slots}/${a.max_slots}</td>
+        <td class="px-3 py-2 text-xs text-slate-500">${a.ends_at?new Date(a.ends_at).toLocaleString():"—"}</td>
+        <td class="px-3 py-2">
+          <div class="flex gap-1">
+            <button class="toggleRoom px-2 py-1 text-xs rounded bg-${a.is_room?"blue":"emerald"}-100 text-${a.is_room?"blue":"emerald"}-700 touch-target" data-id="${a.id}" data-room="${a.is_room}">${a.is_room?"→ Item":"→ Room"}</button>
+            ${a.status==="active"?`<button class="closeAuc px-2 py-1 text-xs rounded bg-amber-100 text-amber-700 touch-target" data-id="${a.id}">Close</button>`:""}
+            <button class="refundAuc px-2 py-1 text-xs rounded bg-red-100 text-red-700 touch-target" data-id="${a.id}">Refund</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+    $$(".toggleRoom").forEach(b=>b.onclick=()=>toggleRoom(b.dataset.id,b.dataset.room==="true"));
+    $$(".closeAuc").forEach(b=>b.onclick=()=>closeAuction(b.dataset.id));
+    $$(".refundAuc").forEach(b=>b.onclick=()=>refundAuction(b.dataset.id));
+  }catch(e){ toast(e.message,true); }
+}
+
+async function toggleRoom(id,isRoom){
+  try{ await api("/api/admin/auctions/"+id+"/toggle-room",{method:"POST",body:JSON.stringify({is_room:!isRoom})}); toast("Updated"); loadAuctions(); }
+  catch(e){ toast(e.message,true); }
+}
+async function closeAuction(id){
+  if(!confirm("Close this auction and determine winner?")) return;
+  try{ await api("/api/admin/auctions/"+id+"/close",{method:"POST"}); toast("Closed"); loadAuctions(); loadPrizes(); }
+  catch(e){ toast(e.message,true); }
+}
+async function refundAuction(id){
+  if(!confirm("Refund ALL bids in this auction? This cancels the auction.")) return;
+  try{ await api("/api/admin/auctions/"+id+"/refund",{method:"POST"}); toast("Refunded"); loadAuctions(); }
+  catch(e){ toast(e.message,true); }
+}
+
+$("#newAuctionBtn").onclick=()=>newAuctionModal();
+function newAuctionModal(a=null){
+  const isEdit=!!a;
+  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4">${isEdit?"Edit":"New"} Auction</h3>
+  <input id="atitle" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Title" value="${a?.title||""}" maxlength="200">
+  <textarea id="adesc" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Description" rows="2">${a?.description||""}</textarea>
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <input id="amarket" type="number" step="0.01" min="0.01" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Market Value" value="${a?.market_value||""}" required>
+    <input id="afee" type="number" step="0.01" min="0.01" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Bid Fee" value="${a?.bid_fee||""}" required>
+  </div>
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <input id="aslots" type="number" min="1" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Max Slots" value="${a?.max_slots||""}" required>
+    <input id="aends" type="datetime-local" class="input-base border border-slate-300 rounded-xl px-4 py-3" value="${a?.ends_at?a.ends_at.slice(0,16):""}">
+  </div>
+  <div class="flex gap-2 mb-3">
+    <label class="flex items-center gap-2"><input id="aroom" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-emerald-600" ${a?.is_room?"checked":""}> Flash Room (limited slots)</label>
+  </div>
+  <input id="aimage" type="url" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Image URL (optional)" value="${a?.image_url||""}">
+  <button id="asave" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">${isEdit?"Save":"Create"}</button>`);
+  $("#asave").onclick=async()=>{
+    try{
+      const body={title:$("#atitle").value,description:$("#adesc").value,market_value:$("#amarket").value,bid_fee:$("#afee").value,max_slots:parseInt($("#aslots").value),is_room:$("#aroom").checked,ends_at:$("#aends").value||null,image_url:$("#aimage").value||null};
+      await api("/api/admin/auctions"+(isEdit?"":""),{method:"POST",body:JSON.stringify(body)});
+      toast(isEdit?"Updated":"Created"); closeModal(); loadAuctions();
+    }catch(e){ toast(e.message,true); }
+  };
+}
+
+async function loadPrizes(){
+  try{
+    const d=await api("/api/admin/prizes?status=all");
+    const tbody=$("#prizesBody");
+    tbody.innerHTML=d.map(p=>`
+      <tr class="hover:bg-slate-50">
+        <td class="px-3 py-2 font-medium">${p.title}</td>
+        <td class="px-3 py-2">${p.winner_phone}</td>
+        <td class="px-3 py-2 text-right">${p.lowest_unique_bid}</td>
+        <td class="px-3 py-2 text-right">${etb(p.market_value)}</td>
+        <td class="px-3 py-2"><span class="badge ${p.prize_status==="pending"?"bg-amber-100 text-amber-700":p.prize_status==="contacted"?"bg-blue-100 text-blue-700":"bg-emerald-100 text-emerald-700"}">${p.prize_status}</span></td>
+        <td class="px-3 py-2">
+          <select class="prizeStatus input-base border border-slate-300 rounded-lg px-3 py-2 text-sm touch-target" data-id="${p.auction_id}">
+            <option value="pending" ${p.prize_status==="pending"?"selected":""}>Pending</option>
+            <option value="contacted" ${p.prize_status==="contacted"?"selected":""}>Contacted</option>
+            <option value="delivered" ${p.prize_status==="delivered"?"selected":""}>Delivered</option>
+          </select>
+        </td>
+      </tr>
+    `).join("");
+    $$(".prizeStatus").forEach(s=>s.onchange=()=>updatePrize(s.dataset.id,s.value));
+  }catch(e){ toast(e.message,true); }
+}
+async function updatePrize(id,status){
+  try{ await api("/api/admin/prizes/"+id,{method:"POST",body:JSON.stringify({prize_status:status})}); toast("Updated"); loadPrizes(); }
+  catch(e){ toast(e.message,true); }
+}
+
+let userSearchDebounce=null;
+async function loadUsers(){
+  try{
+    const q=$("#userSearch").value;
+    const d=await api("/api/admin/users?q="+encodeURIComponent(q)+"&limit=100");
+    const tbody=$("#usersBody");
+    tbody.innerHTML=d.map(u=>`
+      <tr class="hover:bg-slate-50">
+        <td class="px-3 py-2 font-mono text-xs">${u.id}</td>
+        <td class="px-3 py-2">${u.phone_number}</td>
+        <td class="px-3 py-2 text-right">${etb(u.wallet_balance)}</td>
+        <td class="px-3 py-2"><span class="badge ${u.is_verified?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-700"}">${u.is_verified?"Yes":"No"}</span></td>
+        <td class="px-3 py-2"><span class="badge ${u.blocked?"bg-red-100 text-red-700":"bg-emerald-100 text-emerald-700"}">${u.blocked?"Blocked":"Active"}</span></td>
+        <td class="px-3 py-2">
+          <div class="flex gap-1">
+            <button class="blockUser px-2 py-1 text-xs rounded touch-target ${u.blocked?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}" data-id="${u.id}" data-blocked="${u.blocked}">${u.blocked?"Unblock":"Block"}</button>
+            <button class="adjustWallet px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 touch-target" data-id="${u.id}" data-phone="${u.phone_number}">Adjust</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+    $$(".blockUser").forEach(b=>b.onclick=()=>blockUser(b.dataset.id,b.dataset.blocked==="true"));
+    $$(".adjustWallet").forEach(b=>b.onclick=()=>adjustWallet(b.dataset.id,b.dataset.phone));
+  }catch(e){ toast(e.message,true); }
+}
+$("#userSearch").oninput=()=>{ clearTimeout(userSearchDebounce); userSearchDebounce=setTimeout(loadUsers,300); };
+
+async function blockUser(id,blocked){
+  const reason=blocked?prompt("Unblock reason (optional):"):prompt("Block reason:");
+  if(reason===null) return;
+  try{ await api("/api/admin/users/"+id+"/block",{method:"POST",body:JSON.stringify({blocked:!blocked,reason:reason||undefined})}); toast("Updated"); loadUsers(); }
+  catch(e){ toast(e.message,true); }
+}
+function adjustWallet(id,phone){
+  const amt=prompt(`Adjust wallet for ${phone} (positive to credit, negative to debit):`);
+  if(amt===null) return;
+  const note=prompt("Note (optional):")||"admin adjustment";
+  try{ await api("/api/admin/users/"+id+"/adjust-wallet",{method:"POST",body:JSON.stringify({amount:amt,note})}); toast("Adjusted"); loadUsers(); }
+  catch(e){ toast(e.message,true); }
+}
+
+async function loadPayments(){
+  try{
+    const d=await api("/api/admin/payments?status=pending&limit=100");
+    const tbody=$("#paymentsBody");
+    tbody.innerHTML=d.map(p=>`
+      <tr class="hover:bg-slate-50">
+        <td class="px-3 py-2 font-mono text-xs">${p.tx_ref}</td>
+        <td class="px-3 py-2"><span class="badge bg-slate-100 text-slate-700">${p.provider}</span></td>
+        <td class="px-3 py-2 text-right">${etb(p.amount)}</td>
+        <td class="px-3 py-2">${p.user_phone}</td>
+        <td class="px-3 py-2"><span class="badge ${p.status==="pending"?"bg-amber-100 text-amber-700":p.status==="confirmed"?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}">${p.status}</span></td>
+        <td class="px-3 py-2">
+          ${p.status==="pending"?`<div class="flex gap-1"><button class="approvePay px-2 py-1 text-xs rounded bg-emerald-100 text-emerald-700 touch-target" data-ref="${p.tx_ref}">Approve</button><button class="rejectPay px-2 py-1 text-xs rounded bg-red-100 text-red-700 touch-target" data-ref="${p.tx_ref}">Reject</button></div>`:"—"}
+        </td>
+      </tr>
+    `).join("");
+    $$(".approvePay").forEach(b=>b.onclick=()=>resolvePayment(b.dataset.ref,"approve"));
+    $$(".rejectPay").forEach(b=>b.onclick=()=>resolvePayment(b.dataset.ref,"reject"));
+  }catch(e){ toast(e.message,true); }
+}
+async function resolvePayment(ref,action){
+  const reason=action==="reject"?prompt("Rejection reason:"):undefined;
+  if(action==="reject" && reason===null) return;
+  try{ await api("/api/admin/payments/"+ref+"/resolve",{method:"POST",body:JSON.stringify({action,reason})}); toast(action==="approve"?"Approved":"Rejected"); loadPayments(); }
+  catch(e){ toast(e.message,true); }
+}
+
+(async()=>{
+  initTabs();
+  if(token){
+    try{ adminUser=await api("/api/admin/stats"); adminUser={username:"Admin"}; paintHeader(); await loadAll(); }
+    catch(e){ token=""; localStorage.removeItem("at"); showLogin(); }
+  }else{ showLogin(); }
+})();
+</script>
+</body></html>
