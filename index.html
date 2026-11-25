@@ -13,6 +13,13 @@
   .pill-scroll{scrollbar-width:none;-ms-overflow-style:none}
   .pill-scroll::-webkit-scrollbar{display:none}
   .img-fallback{background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);display:flex;align-items:center;justify-content:center;color:#166534}
+  .sheet-enter{animation:slideUp .25s ease}
+  @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+  .method-btn{border:2px solid #e2e8f0;transition:all .15s}
+  .method-btn.active{border-color:#10b981;background:#f0fdf4}
+  .method-btn.disabled{opacity:.5;pointer-events:none}
+  .method-btn:not(.disabled):hover{border-color:#94a3b8}
+  .bid-status{display:inline-flex;align-items:center;gap:1px;padding:1px 6px;border-radius:9999px;font-size:10px;font-weight:600}
 </style>
 </head>
 <body class="min-h-screen pb-20 overflow-x-hidden">
@@ -68,9 +75,24 @@
   </section>
 </main>
 
-<!-- Modal -->
+<!-- Modal (reused for login, topup, checkout) -->
 <div id="modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div id="mbox" class="bg-white rounded-2xl p-5 w-full max-w-sm max-h-[90vh] overflow-y-auto"></div>
+</div>
+
+<!-- Checkout Sheet (bottom sheet on mobile, centered modal on desktop) -->
+<div id="checkoutSheet" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+  <div class="fixed inset-0 bg-black/50" onclick="closeCheckout()"></div>
+  <div class="fixed bottom-0 left-0 right-0 sm:max-w-md sm:mx-auto sm:rounded-t-2xl sm:rounded-b-none sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-50 bg-white sheet-enter max-h-[90vh] flex flex-col" style="border-radius:1.5rem 1.5rem 0 0;">
+    <div class="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
+      <h3 id="checkout-title" class="font-bold text-lg">Checkout</h3>
+      <button onclick="closeCheckout()" class="text-slate-500 hover:text-slate-700 text-2xl leading-none p-1">×</button>
+    </div>
+    <div id="checkoutBody" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+    <div class="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 shrink-0 safe-area-bottom">
+      <button id="checkoutPayBtn" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target disabled:opacity-50 disabled:cursor-not-allowed" disabled>Pay & Place Bid</button>
+    </div>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -282,20 +304,14 @@ function mkCard(a){
 
   q(".tgl").onclick=()=>{ const l=q(".list"); l.classList.toggle("hidden"); q(".tgl").innerHTML=(l.classList.contains("hidden")?"▸":"▾")+' My Bids'; };
 
-  const send=async(amts,btn)=>{
-    if(!token) return loginModal();
-    btn.disabled=true;
-    try{
-      const d=await api(`/api/auctions/${el.a.id}/bid-batch`,{method:"POST",body:JSON.stringify({bid_amounts:amts})});
-      toast(`Placed ${d.placed} bid${d.placed>1?"s":""} ✔`);
-      if(me){ me.wallet_balance=d.wallet_balance; paintMe(); }
-      await sync();
-    }catch(e){ toast(e.message, true); }
-    btn.disabled=false;
+  // Single bid: open checkout sheet
+  q(".place").onclick=e=>{
+    const v=Math.floor(+q(".num").value);
+    if(!(v>=1)) return toast("Enter a positive whole number", true);
+    openCheckoutSheet(el.a, [v]);
   };
 
-  q(".place").onclick=e=>{ const v=Math.floor(+q(".num").value); if(!(v>=1)) return toast("Enter a positive whole number", true); send([v], e.target); };
-
+  // Pack bid: open checkout sheet
   q(".buy").onclick=e=>{
     const n=st.pack;
     let amts=[];
@@ -313,7 +329,7 @@ function mkCard(a){
       }
       amts=[...set];
     }
-    send(amts, e.target);
+    openCheckoutSheet(el.a, amts);
   };
 
   mode();
@@ -370,7 +386,7 @@ function upd(el,a){
 
   const m=q("mine");
   m.classList.toggle("hidden", !a.user_bids?.length);
-  el.querySelector(".list").innerHTML=(a.user_bids||[]).map(x=>`<span class="text-xs px-2 py-0.5 rounded-full ${x.unique?"bg-blue-100 text-blue-800":"bg-amber-100 text-amber-800"}" title="${x.unique?"unique":"duplicated"}">${x.amount}${x.unique?" ✓":" ✗"}</span>`).join("");
+  el.querySelector(".list").innerHTML=(a.user_bids||[]).map(x=>`<span class="bid-status ${x.unique?"bg-blue-100 text-blue-800":"bg-amber-100 text-amber-800"}" title="${x.unique?"unique":"duplicated"}">${x.amount}${x.unique?" ✓":" ✗"}</span>`).join("");
 
   el.refreshMode();
   tick(el);
@@ -428,6 +444,187 @@ function connect(){
   };
   ws.onclose=()=>{ $("#dot").className="w-2.5 h-2.5 rounded-full bg-slate-300"; clearTimeout(wsTimer); wsTimer=setTimeout(connect, 2000); };
   ws.onerror=()=>ws.close();
+}
+
+// ===== Checkout Sheet =====
+let checkoutState = { auction: null, bidAmounts: [], method: "wallet", polling: false };
+
+function openCheckoutSheet(auction, bidAmounts){
+  checkoutState.auction = auction;
+  checkoutState.bidAmounts = bidAmounts;
+  checkoutState.method = "wallet";
+  checkoutState.polling = false;
+  renderCheckoutSheet();
+  $("#checkoutSheet").classList.remove("hidden");
+  document.body.style.overflow="hidden";
+}
+
+function closeCheckout(){
+  $("#checkoutSheet").classList.add("hidden");
+  document.body.style.overflow="";
+  checkoutState.polling = false;
+}
+
+function renderCheckoutSheet(){
+  const a = checkoutState.auction;
+  const amts = checkoutState.bidAmounts;
+  const total = a.bid_fee * amts.length;
+  const walletBal = me?.wallet_balance || 0;
+  const canWallet = walletBal >= total;
+
+  const bidSummary = amts.length === 1
+    ? `Bid #${amts[0]}`
+    : `${amts.length} bids: ${amts.slice(0,5).join(", ")}${amts.length>5?" …":""}`;
+
+  const methods = [
+    {id:"wallet", label:"A BID Wallet", icon:"💰", desc: canWallet ? `Balance: ${etb(walletBal)}` : `Insufficient (need ${etb(total)}, have ${etb(walletBal)})`, disabled: !canWallet},
+    {id:"telebirr", label:"Telebirr (via Chapa)", icon:"📱", desc:"Pay with Telebirr", disabled:false},
+    {id:"cbebirr", label:"CBE Birr (via Chapa)", icon:"🏦", desc:"Pay with CBE Birr", disabled:false},
+    {id:"chapa", label:"Ebirr / M-Pesa / Card (via Chapa)", icon:"💳", desc:"Ebirr, M-Pesa, Visa/Mastercard", disabled:false},
+  ];
+
+  $("#checkoutBody").innerHTML = `
+    <div class="space-y-3">
+      <div class="bg-slate-50 rounded-xl p-4">
+        <div class="font-semibold text-slate-900">${a.title}</div>
+        <div class="text-sm text-slate-600 mt-1">${bidSummary}</div>
+        <div class="flex justify-between mt-2 pt-2 border-t border-slate-200">
+          <span class="font-medium text-slate-700">Total</span>
+          <span class="font-bold text-emerald-700 text-lg">${etb(total)}</span>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-2">Payment Method</label>
+        <div class="space-y-2" id="methodList">
+          ${methods.map(m=>`
+            <button type="button" class="method-btn w-full text-left rounded-xl p-4 flex items-center gap-3 touch-target ${m.disabled?"disabled":""}" data-method="${m.id}" ${m.disabled?"disabled":""}>
+              <span class="text-2xl">${m.icon}</span>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-slate-900">${m.label}</div>
+                <div class="text-xs text-slate-500 truncate">${m.desc}</div>
+              </div>
+              <svg class="w-5 h-5 text-emerald-600 shrink-0 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            </button>
+          `).join("")}
+        </div>
+      </div>
+
+      ${!canWallet ? `<p class="text-xs text-amber-700 bg-amber-50 rounded-lg p-3 flex items-center gap-2">⚠️ Wallet balance too low. Top up or choose another method.</p>` : ""}
+
+      <div id="checkoutStatus" class="hidden p-3 rounded-lg text-sm"></div>
+    </div>
+  `;
+
+  // Method selection
+  $$("#methodList button").forEach(btn=>{
+    btn.onclick=()=>{
+      if(btn.disabled) return;
+      checkoutState.method = btn.dataset.method;
+      $$("#methodList button").forEach(b=>{
+        b.classList.remove("active","border-emerald-500","bg-emerald-50");
+        b.querySelector("svg")?.classList.add("hidden");
+      });
+      btn.classList.add("active","border-emerald-500","bg-emerald-50");
+      btn.querySelector("svg")?.classList.remove("hidden");
+      updatePayButton();
+    };
+  });
+
+  // Initial active state
+  const firstEnabled = methods.find(m=>!m.disabled);
+  if(firstEnabled){
+    checkoutState.method = firstEnabled.id;
+    const btn = $(`#methodList button[data-method="${firstEnabled.id}"]`);
+    btn?.classList.add("active","border-emerald-500","bg-emerald-50");
+    btn?.querySelector("svg")?.classList.remove("hidden");
+  }
+  updatePayButton();
+
+  // Pay button handler
+  $("#checkoutPayBtn").onclick = async () => {
+    if(checkoutState.method === "wallet"){
+      await executeWalletBid();
+    }else{
+      await launchChapaCheckout();
+    }
+  };
+}
+
+function updatePayButton(){
+  const btn = $("#checkoutPayBtn");
+  const a = checkoutState.auction;
+  const total = a.bid_fee * checkoutState.bidAmounts.length;
+  if(checkoutState.method === "wallet"){
+    btn.textContent = `Pay ${etb(total)} & Place Bid (Wallet)`;
+  }else{
+    const labels = {telebirr:"Telebirr", cbebirr:"CBE Birr", chapa:"Ebirr/M-Pesa/Card"};
+    btn.textContent = `Pay ${etb(total)} via ${labels[checkoutState.method] || "Chapa"}`;
+  }
+  btn.disabled = false;
+}
+
+async function executeWalletBid(){
+  const btn = $("#checkoutPayBtn");
+  btn.disabled = true;
+  btn.textContent = "Placing bid…";
+  try{
+    const d = await api(`/api/auctions/${checkoutState.auction.id}/bid-batch`,{
+      method:"POST", body:JSON.stringify({bid_amounts: checkoutState.bidAmounts})
+    });
+    toast(`✅ ${d.placed} bid${d.placed>1?"s":""} placed!`);
+    if(me){ me.wallet_balance = d.wallet_balance; paintMe(); }
+    closeCheckout();
+    await sync();
+  }catch(e){
+    toast(e.message, true);
+    btn.disabled = false;
+    updatePayButton();
+  }
+}
+
+async function launchChapaCheckout(){
+  const btn = $("#checkoutPayBtn");
+  btn.disabled = true;
+  btn.textContent = "Opening checkout…";
+  try{
+    const d = await api(`/api/auctions/${checkoutState.auction.id}/bid-checkout`,{
+      method:"POST", body:JSON.stringify({
+        bid_amounts: checkoutState.bidAmounts,
+        payment_method: checkoutState.method
+      })
+    });
+    closeCheckout();
+    window.open(d.checkout_url, "_blank");
+    pollBidCheckout(d.tx_ref);
+  }catch(e){
+    toast(e.message, true);
+    btn.disabled = false;
+    updatePayButton();
+  }
+}
+
+async function pollBidCheckout(ref, attempts=0){
+  if(attempts > 60) return;
+  try{
+    const d = await api("/api/wallet/deposit/status/"+ref);
+    if(d.status === "confirmed"){
+      let msg = "Payment confirmed ✅";
+      if(d.bids_placed){
+        msg += ` — ${d.bids_placed} bid${d.bids_placed>1?"s":""} placed automatically`;
+      }else if(d.auction_id){
+        msg += " — Room closed or auction ended. Funds added to your wallet.";
+      }
+      toast(msg);
+      await sync();
+      return;
+    }
+    if(d.status === "failed"){
+      toast("Payment failed: " + (d.failure_reason || "Unknown error"), true);
+      return;
+    }
+  }catch(e){}
+  setTimeout(()=>pollBidCheckout(ref, attempts+1), 4000);
 }
 
 (async()=>{

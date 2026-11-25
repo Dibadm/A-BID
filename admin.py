@@ -1,6 +1,6 @@
 import os, hashlib, secrets, datetime as dt
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request, UploadFile, File, Form
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update, func, desc, text
 from database import (SessionLocal, AdminUser, AdminAuditLog, User, UserFlag, Auction, BidLedger,
@@ -150,6 +150,42 @@ class AuctionCreate(BaseModel):
     is_room: bool = False
     ends_at: dt.datetime | None = None
     image_url: str | None = None
+
+
+@router.post("/auctions/upload-image")
+async def admin_upload_image(
+    file: UploadFile = File(...),
+    admin: AdminUser = Depends(require_perm("auctions")),
+):
+    """Upload an image, resize to max 800px, convert to WebP data URL."""
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(400, "File must be an image")
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "Image too large (max 5MB)")
+    try:
+        from PIL import Image
+        import io, base64
+        img = Image.open(io.BytesIO(content))
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGB")
+        max_dim = 800
+        w, h = img.size
+        if w > max_dim or h > max_dim:
+            if w > h:
+                h = int(h * max_dim / w)
+                w = max_dim
+            else:
+                w = int(w * max_dim / h)
+                h = max_dim
+            img = img.resize((w, h), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="WEBP", quality=85, method=6)
+        data_url = "data:image/webp;base64," + base64.b64encode(buf.getvalue()).decode()
+        return {"image_url": data_url}
+    except Exception as e:
+        raise HTTPException(500, f"Image processing failed: {e}")
+
 
 class AuctionToggle(BaseModel):
     is_room: bool

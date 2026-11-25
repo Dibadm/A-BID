@@ -91,6 +91,8 @@ class PaymentIntent(Base):
     amount = mapped_column(Numeric(12, 2))
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|confirmed|failed
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    auction_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
+    pending_bids_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -130,3 +132,6 @@ async def init_models():
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(text("ALTER TABLE auctions ADD COLUMN IF NOT EXISTS is_room BOOLEAN NOT NULL DEFAULT FALSE;"))
         await conn.execute(text("ALTER TABLE auctions ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);"))
+        await conn.execute(text("ALTER TABLE payment_intents ADD COLUMN IF NOT EXISTS auction_id INTEGER;"))
+        await conn.execute(text("ALTER TABLE payment_intents ADD COLUMN IF NOT EXISTS pending_bids_json TEXT;"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_payment_intents_auction_id ON payment_intents (auction_id);"))

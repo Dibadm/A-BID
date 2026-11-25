@@ -12,12 +12,18 @@
   .touch-target{min-height:44px}
   .pill-scroll{scrollbar-width:none;-ms-overflow-style:none}
   .pill-scroll::-webkit-scrollbar{display:none}
-  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .table-wrap table{min-width:600px}
   .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
   .tab-btn{padding:10px 14px;border-radius:8px;font-weight:600;font-size:14px;white-space:nowrap}
   .tab-btn.active{background:#10b981;color:#fff}
   .tab-btn:not(.active){background:#fff;border:1px solid #e2e8f0;color:#475569}
+  .auction-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:8px}
+  .auction-card .row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9}
+  .auction-card .row:last-child{border-bottom:none}
+  .auction-card .label{font-size:12px;color:#64748b}
+  .auction-card .value{font-weight:600;color:#0f172a}
+  .btn-group{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .img-preview{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#f0fdf4}
+  .img-preview-placeholder{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#f0fdf4;border-radius:8px;color:#166534;font-size:2rem}
 </style>
 </head>
 <body class="min-h-screen pb-20 overflow-x-hidden">
@@ -27,11 +33,11 @@
       A<span class="text-slate-900"> BID</span> <span class="text-xs font-normal text-slate-500">Admin</span>
     </div>
     <div class="flex-1 min-w-0"></div>
-    <button id="adminUser" class="text-xs sm:text-sm bg-slate-100 text-slate-700 rounded-full px-3 py-1.5 touch-target whitespace-nowrap shrink-0"></button>
+    <span id="roleBadge" class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 shrink-0"></span>
     <button id="logoutBtn" class="text-sm font-semibold bg-red-600 text-white rounded-full px-3 py-1.5 touch-target shrink-0 whitespace-nowrap">Logout</button>
   </div>
 </header>
-<main class="max-w-7xl mx-auto px-3 pb-4">
+<main class="max-w-7xl mx-auto px-3 pb-4" id="mainContent" style="display:none;">
   <!-- Tabs -->
   <div class="flex gap-2 my-4 pill-scroll overflow-x-auto pb-2" id="tabs" role="tablist" aria-label="Admin sections"></div>
 
@@ -55,33 +61,15 @@
   <section id="secAuctions" class="hidden space-y-4">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
       <h2 class="font-bold text-lg">Auctions</h2>
-      <button id="newAuctionBtn" class="bg-emerald-600 text-white rounded-xl px-4 py-2.5 font-semibold touch-target shrink-0">+ New Auction</button>
+      <button id="newAuctionBtn" class="bg-emerald-600 text-white rounded-xl px-4 py-2.5 font-semibold touch-target shrink-0">+ Add Item / Room</button>
     </div>
-    <div class="table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr class="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-            <th class="px-3 py-2">ID</th><th class="px-3 py-2">Title</th><th class="px-3 py-2">Type</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Fee</th><th class="px-3 py-2">Slots</th><th class="px-3 py-2">Ends</th><th class="px-3 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="auctionsBody" class="divide-y divide-slate-100"></tbody>
-      </table>
-    </div>
+    <div id="auctionsList" class="space-y-2"></div>
   </section>
 
   <!-- Prizes -->
   <section id="secPrizes" class="hidden space-y-4">
     <h2 class="font-bold text-lg">Prizes</h2>
-    <div class="table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr class="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-            <th class="px-3 py-2">Auction</th><th class="px-3 py-2">Winner</th><th class="px-3 py-2">Bid</th><th class="px-3 py-2">Value</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Action</th>
-          </tr>
-        </thead>
-        <tbody id="prizesBody" class="divide-y divide-slate-100"></tbody>
-      </table>
-    </div>
+    <div id="prizesList" class="space-y-2"></div>
   </section>
 
   <!-- Users -->
@@ -90,35 +78,28 @@
       <h2 class="font-bold text-lg">Users</h2>
       <input id="userSearch" type="search" placeholder="Search phone..." class="input-base border border-slate-300 rounded-xl px-4 py-2.5 touch-target w-full sm:w-64" aria-label="Search users">
     </div>
-    <div class="table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr class="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-            <th class="px-3 py-2">ID</th><th class="px-3 py-2">Phone</th><th class="px-3 py-2">Balance</th><th class="px-3 py-2">Verified</th><th class="px-3 py-2">Blocked</th><th class="px-3 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="usersBody" class="divide-y divide-slate-100"></tbody>
-      </table>
-    </div>
+    <div id="usersList" class="space-y-2"></div>
   </section>
 
   <!-- Payments -->
   <section id="secPayments" class="hidden space-y-4">
     <h2 class="font-bold text-lg">Payments</h2>
-    <div class="table-wrap bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr class="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-            <th class="px-3 py-2">Ref</th><th class="px-3 py-2">Provider</th><th class="px-3 py-2">Amount</th><th class="px-3 py-2">User</th><th class="px-3 py-2">Status</th><th class="px-3 py-2">Action</th>
-          </tr>
-        </thead>
-        <tbody id="paymentsBody" class="divide-y divide-slate-100"></tbody>
-      </table>
-    </div>
+    <div id="paymentsList" class="space-y-2"></div>
   </section>
 </main>
 
-<!-- Modal -->
+<!-- Login Modal (shown when not authenticated) -->
+<div id="loginModal" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="login-title">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+    <h3 id="login-title" class="font-bold text-xl mb-6 text-center">A BID Admin Login</h3>
+    <input id="auser" type="text" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Username" autocomplete="username">
+    <input id="apass" type="password" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Password" autocomplete="current-password">
+    <button id="alogin" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">Sign In</button>
+    <p id="loginError" class="text-center text-sm text-red-600 mt-3 hidden"></p>
+  </div>
+</div>
+
+<!-- Action Modal -->
 <div id="modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div id="mbox" class="bg-white rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
 </div>
@@ -132,7 +113,7 @@ const $$=s=>document.querySelectorAll(s);
 let token=localStorage.getItem("at")||"", adminUser=null;
 const TABS=[
   {id:"dashboard",label:"Dashboard",icon:"📊",perm:"stats"},
-  {id:"auctions",label:"Flash Rooms & Items",icon:"⚡",perm:"auctions"},
+  {id:"auctions",label:"Auctions",icon:"⚡",perm:"auctions"},
   {id:"prizes",label:"Prizes",icon:"🏆",perm:"prizes"},
   {id:"users",label:"Users",icon:"👥",perm:"users"},
   {id:"payments",label:"Payments",icon:"💳",perm:"payments"},
@@ -170,22 +151,31 @@ function closeModal(){
 $("#modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
 
 function showLogin(){
-  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4">A BID Admin Login</h3>
-  <input id="auser" type="text" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Username" autocomplete="username">
-  <input id="apass" type="password" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Password" autocomplete="current-password">
-  <button id="alogin" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">Sign In</button>`);
-  $("#alogin").onclick=async()=>{
-    try{
-      const d=await api("/api/admin/login",{method:"POST",body:JSON.stringify({username:$("#auser").value,password:$("#apass").value})});
-      token=d.token; adminUser=d; localStorage.setItem("at",token); closeModal(); initTabs(); loadAll();
-    }catch(e){ toast(e.message,true); }
-  };
+  $("#loginModal").classList.remove("hidden");
+  $("#mainContent").style.display="none";
+  $("#loginError").classList.add("hidden");
+  $("#auser").value="";
+  $("#apass").value="";
+  $("#auser").focus();
+}
+function hideLogin(){
+  $("#loginModal").classList.add("hidden");
+  $("#mainContent").style.display="block";
 }
 
 function paintHeader(){
-  $("#adminUser").textContent=adminUser?.username||"Admin";
+  $("#roleBadge").textContent=adminUser?.role||"Admin";
+  $("#roleBadge").classList.remove("hidden");
 }
+
 $("#logoutBtn").onclick=()=>{ token=""; localStorage.removeItem("at"); adminUser=null; showLogin(); };
+$("#alogin").onclick=async()=>{
+  $("#loginError").classList.add("hidden");
+  try{
+    const d=await api("/api/admin/login",{method:"POST",body:JSON.stringify({username:$("#auser").value,password:$("#apass").value})});
+    token=d.token; adminUser={username:d.username,role:d.role}; localStorage.setItem("at",token); hideLogin(); paintHeader(); initTabs(); loadAll();
+  }catch(e){ $("#loginError").textContent=e.message; $("#loginError").classList.remove("hidden"); }
+};
 
 function tabsHTML(){
   return TABS.map(t=>`<button role="tab" data-tab="${t.id}" class="tab-btn ${t.id==="dashboard"?"active":""}" aria-selected="${t.id==="dashboard"}">${t.icon} ${t.label}</button>`).join("");
@@ -225,24 +215,29 @@ async function loadStats(){
 async function loadAuctions(){
   try{
     const d=await api("/api/admin/auctions?limit=100");
-    const tbody=$("#auctionsBody");
-    tbody.innerHTML=d.map(a=>`
-      <tr class="hover:bg-slate-50">
-        <td class="px-3 py-2 font-mono text-xs">${a.id}</td>
-        <td class="px-3 py-2 font-medium truncate max-w-xs">${a.title}</td>
-        <td class="px-3 py-2"><span class="badge ${a.is_room?"bg-emerald-100 text-emerald-700":"bg-blue-100 text-blue-700"}">${a.is_room?"⚡ Room":"🛍️ Item"}</span></td>
-        <td class="px-3 py-2"><span class="badge ${a.status==="active"?"bg-emerald-100 text-emerald-700":a.status==="ended"?"bg-slate-100 text-slate-700":"bg-red-100 text-red-700"}">${a.status}</span></td>
-        <td class="px-3 py-2 text-right">${etb(a.bid_fee)}</td>
-        <td class="px-3 py-2 text-right">${a.filled_slots}/${a.max_slots}</td>
-        <td class="px-3 py-2 text-xs text-slate-500">${a.ends_at?new Date(a.ends_at).toLocaleString():"—"}</td>
-        <td class="px-3 py-2">
-          <div class="flex gap-1">
-            <button class="toggleRoom px-2 py-1 text-xs rounded bg-${a.is_room?"blue":"emerald"}-100 text-${a.is_room?"blue":"emerald"}-700 touch-target" data-id="${a.id}" data-room="${a.is_room}">${a.is_room?"→ Item":"→ Room"}</button>
-            ${a.status==="active"?`<button class="closeAuc px-2 py-1 text-xs rounded bg-amber-100 text-amber-700 touch-target" data-id="${a.id}">Close</button>`:""}
-            <button class="refundAuc px-2 py-1 text-xs rounded bg-red-100 text-red-700 touch-target" data-id="${a.id}">Refund</button>
+    const list=$("#auctionsList");
+    list.innerHTML=d.map(a=>`
+      <div class="auction-card">
+        <div class="flex items-center gap-3 mb-2">
+          ${a.image_url?`<img src="${a.image_url}" class="img-preview w-16 h-16" alt="">`:`<div class="img-preview-placeholder w-16 h-16">📦</div>`}
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold truncate">${a.title}</div>
+            <div class="text-xs text-slate-500 truncate">${a.description||"—"}</div>
           </div>
-        </td>
-      </tr>
+        </div>
+        <div class="row"><span class="label">ID</span><span class="value font-mono text-xs">${a.id}</span></div>
+        <div class="row"><span class="label">Type</span><span class="value"><span class="badge ${a.is_room?"bg-emerald-100 text-emerald-700":"bg-blue-100 text-blue-700"}">${a.is_room?"⚡ Flash Room":"🛍️ Open Item"}</span></span></div>
+        <div class="row"><span class="label">Status</span><span class="value"><span class="badge ${a.status==="active"?"bg-emerald-100 text-emerald-700":a.status==="ended"?"bg-slate-100 text-slate-700":"bg-red-100 text-red-700"}">${a.status}</span></span></div>
+        <div class="row"><span class="label">Bid Fee</span><span class="value">${etb(a.bid_fee)}</span></div>
+        <div class="row"><span class="label">Slots</span><span class="value">${a.filled_slots}/${a.max_slots}</span></div>
+        <div class="row"><span class="label">Ends</span><span class="value text-xs text-slate-500">${a.ends_at?new Date(a.ends_at).toLocaleString():"—"}</span></div>
+        <div class="row"><span class="label">Market Value</span><span class="value">${etb(a.market_value)}</span></div>
+        <div class="btn-group">
+          <button class="toggleRoom px-3 py-2 text-xs rounded bg-${a.is_room?"blue":"emerald"}-100 text-${a.is_room?"blue":"emerald"}-700 touch-target" data-id="${a.id}" data-room="${a.is_room}">${a.is_room?"→ Open Item":"→ Flash Room"}</button>
+          ${a.status==="active"?`<button class="closeAuc px-3 py-2 text-xs rounded bg-amber-100 text-amber-700 touch-target" data-id="${a.id}">Close</button>`:""}
+          <button class="refundAuc px-3 py-2 text-xs rounded bg-red-100 text-red-700 touch-target" data-id="${a.id}">Refund</button>
+        </div>
+      </div>
     `).join("");
     $$(".toggleRoom").forEach(b=>b.onclick=()=>toggleRoom(b.dataset.id,b.dataset.room==="true"));
     $$(".closeAuc").forEach(b=>b.onclick=()=>closeAuction(b.dataset.id));
@@ -268,25 +263,86 @@ async function refundAuction(id){
 $("#newAuctionBtn").onclick=()=>newAuctionModal();
 function newAuctionModal(a=null){
   const isEdit=!!a;
+  let imageDataUrl=a?.image_url||"";
+  let imageFile=null;
+  
   modal(`<h3 id="modal-title" class="font-bold text-lg mb-4">${isEdit?"Edit":"New"} Auction</h3>
-  <input id="atitle" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Title" value="${a?.title||""}" maxlength="200">
-  <textarea id="adesc" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Description" rows="2">${a?.description||""}</textarea>
-  <div class="grid grid-cols-2 gap-2 mb-3">
-    <input id="amarket" type="number" step="0.01" min="0.01" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Market Value" value="${a?.market_value||""}" required>
-    <input id="afee" type="number" step="0.01" min="0.01" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Bid Fee" value="${a?.bid_fee||""}" required>
-  </div>
-  <div class="grid grid-cols-2 gap-2 mb-3">
-    <input id="aslots" type="number" min="1" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Max Slots" value="${a?.max_slots||""}" required>
-    <input id="aends" type="datetime-local" class="input-base border border-slate-300 rounded-xl px-4 py-3" value="${a?.ends_at?a.ends_at.slice(0,16):""}">
-  </div>
-  <div class="flex gap-2 mb-3">
-    <label class="flex items-center gap-2"><input id="aroom" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-emerald-600" ${a?.is_room?"checked":""}> Flash Room (limited slots)</label>
-  </div>
-  <input id="aimage" type="url" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Image URL (optional)" value="${a?.image_url||""}">
-  <button id="asave" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">${isEdit?"Save":"Create"}</button>`);
+  <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+    <input id="atitle" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Item Title" value="${a?.title||""}" maxlength="200">
+    <textarea id="adesc" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Description" rows="2">${a?.description||""}</textarea>
+    
+    <div class="flex gap-2">
+      <label class="flex-1 flex items-center gap-2 p-3 border-2 rounded-xl ${a?.is_room?"border-emerald-500 bg-emerald-50":"border-slate-200"} cursor-pointer touch-target">
+        <input type="radio" name="atype" value="room" class="w-4 h-4 text-emerald-600" ${a?.is_room?"checked":""}>
+        <span class="font-medium">⚡ Flash Room (Capped Slots)</span>
+      </label>
+      <label class="flex-1 flex items-center gap-2 p-3 border-2 rounded-xl ${!a?.is_room?"border-emerald-500 bg-emerald-50":"border-slate-200"} cursor-pointer touch-target">
+        <input type="radio" name="atype" value="item" class="w-4 h-4 text-emerald-600" ${!a?.is_room?"checked":""}>
+        <span class="font-medium">🛍️ Open Bidded Item (Timer)</span>
+      </label>
+    </div>
+    
+    <div class="grid grid-cols-2 gap-2">
+      <input id="amarket" type="number" step="0.01" min="0.01" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Market Value (ETB)" value="${a?.market_value||""}" required>
+      <input id="afee" type="number" step="0.01" min="0.01" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Bid Fee / Amount (ETB)" value="${a?.bid_fee||""}" required>
+    </div>
+    
+    <div class="grid grid-cols-2 gap-2">
+      <input id="aslots" type="number" min="1" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Max Slots" value="${a?.max_slots||""}" required>
+      <input id="aends" type="datetime-local" class="input-base border border-slate-300 rounded-xl px-4 py-3" value="${a?.ends_at?a.ends_at.slice(0,16):""}">
+    </div>
+    
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-2">Product Image</label>
+      <div class="relative mb-2">
+        <img id="imgPreview" class="img-preview w-full" src="${a?.image_url||""}" alt="Preview" style="display:${a?.image_url?"block":"none"}">
+        <div id="imgPlaceholder" class="img-preview-placeholder" style="display:${a?.image_url?"none":"flex"}">📷</div>
+      </div>
+      <div class="space-y-2">
+        <input type="file" id="imgFile" accept="image/*" class="input-base border border-slate-300 rounded-xl px-4 py-3 w-full" onchange="handleImageFile(this)">
+        <input type="url" id="aimage" class="input-base border border-slate-300 rounded-xl px-4 py-3 w-full" placeholder="Or paste image URL" value="${a?.image_url||""}">
+        <p class="text-xs text-slate-500">Upload a file (auto-resized to WebP) or paste a URL. Max 2MB recommended.</p>
+      </div>
+    </div>
+    
+    <button id="asave" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target mt-4">${isEdit?"Save Changes":"Create Auction"}</button>
+  </div>`);
+  
+  function handleImageFile(input){
+    const file=input.files[0];
+    if(!file) return;
+    if(file.size>5*1024*1024){ toast("Image too large (max 5MB)",true); return; }
+    imageFile=file;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement("canvas");
+        const maxDim=800;
+        let {width,height}=img;
+        if(width>maxDim||height>maxDim){
+          if(width>height){ height=Math.round(height*maxDim/width); width=maxDim; }
+          else{ width=Math.round(width*maxDim/height); height=maxDim; }
+        }
+        canvas.width=width; canvas.height=height;
+        const ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,width,height);
+        imageDataUrl=canvas.toDataURL("image/webp",0.85);
+        $("#imgPreview").src=imageDataUrl;
+        $("#imgPreview").style.display="block";
+        $("#imgPlaceholder").style.display="none";
+        $("#aimage").value="";
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  
   $("#asave").onclick=async()=>{
+    const isRoom=$('input[name="atype"]:checked')?.value==="room";
+    const body={title:$("#atitle").value,description:$("#adesc").value,market_value:$("#amarket").value,bid_fee:$("#afee").value,max_slots:parseInt($("#aslots").value),is_room:isRoom,ends_at:$("#aends").value||null,image_url:imageDataUrl||$("#aimage").value||null};
+    if(!body.title||!body.market_value||!body.bid_fee||!body.max_slots){ toast("Fill required fields",true); return; }
     try{
-      const body={title:$("#atitle").value,description:$("#adesc").value,market_value:$("#amarket").value,bid_fee:$("#afee").value,max_slots:parseInt($("#aslots").value),is_room:$("#aroom").checked,ends_at:$("#aends").value||null,image_url:$("#aimage").value||null};
       await api("/api/admin/auctions"+(isEdit?"":""),{method:"POST",body:JSON.stringify(body)});
       toast(isEdit?"Updated":"Created"); closeModal(); loadAuctions();
     }catch(e){ toast(e.message,true); }
@@ -296,22 +352,19 @@ function newAuctionModal(a=null){
 async function loadPrizes(){
   try{
     const d=await api("/api/admin/prizes?status=all");
-    const tbody=$("#prizesBody");
-    tbody.innerHTML=d.map(p=>`
-      <tr class="hover:bg-slate-50">
-        <td class="px-3 py-2 font-medium">${p.title}</td>
-        <td class="px-3 py-2">${p.winner_phone}</td>
-        <td class="px-3 py-2 text-right">${p.lowest_unique_bid}</td>
-        <td class="px-3 py-2 text-right">${etb(p.market_value)}</td>
-        <td class="px-3 py-2"><span class="badge ${p.prize_status==="pending"?"bg-amber-100 text-amber-700":p.prize_status==="contacted"?"bg-blue-100 text-blue-700":"bg-emerald-100 text-emerald-700"}">${p.prize_status}</span></td>
-        <td class="px-3 py-2">
-          <select class="prizeStatus input-base border border-slate-300 rounded-lg px-3 py-2 text-sm touch-target" data-id="${p.auction_id}">
-            <option value="pending" ${p.prize_status==="pending"?"selected":""}>Pending</option>
-            <option value="contacted" ${p.prize_status==="contacted"?"selected":""}>Contacted</option>
-            <option value="delivered" ${p.prize_status==="delivered"?"selected":""}>Delivered</option>
-          </select>
-        </td>
-      </tr>
+    const list=$("#prizesList");
+    list.innerHTML=d.map(p=>`
+      <div class="auction-card">
+        <div class="font-semibold">${p.title}</div>
+        <div class="row"><span class="label">Winner</span><span class="value">${p.winner_phone}</span></div>
+        <div class="row"><span class="label">Winning Bid</span><span class="value">${p.lowest_unique_bid}</span></div>
+        <div class="row"><span class="label">Market Value</span><span class="value">${etb(p.market_value)}</span></div>
+        <div class="row"><span class="label">Status</span><span class="value"><select class="prizeStatus input-base border border-slate-300 rounded-lg px-3 py-2 text-sm touch-target" data-id="${p.auction_id}">
+          <option value="pending" ${p.prize_status==="pending"?"selected":""}>Pending</option>
+          <option value="contacted" ${p.prize_status==="contacted"?"selected":""}>Contacted</option>
+          <option value="delivered" ${p.prize_status==="delivered"?"selected":""}>Delivered</option>
+        </select></span></div>
+      </div>
     `).join("");
     $$(".prizeStatus").forEach(s=>s.onchange=()=>updatePrize(s.dataset.id,s.value));
   }catch(e){ toast(e.message,true); }
@@ -326,21 +379,19 @@ async function loadUsers(){
   try{
     const q=$("#userSearch").value;
     const d=await api("/api/admin/users?q="+encodeURIComponent(q)+"&limit=100");
-    const tbody=$("#usersBody");
-    tbody.innerHTML=d.map(u=>`
-      <tr class="hover:bg-slate-50">
-        <td class="px-3 py-2 font-mono text-xs">${u.id}</td>
-        <td class="px-3 py-2">${u.phone_number}</td>
-        <td class="px-3 py-2 text-right">${etb(u.wallet_balance)}</td>
-        <td class="px-3 py-2"><span class="badge ${u.is_verified?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-700"}">${u.is_verified?"Yes":"No"}</span></td>
-        <td class="px-3 py-2"><span class="badge ${u.blocked?"bg-red-100 text-red-700":"bg-emerald-100 text-emerald-700"}">${u.blocked?"Blocked":"Active"}</span></td>
-        <td class="px-3 py-2">
-          <div class="flex gap-1">
-            <button class="blockUser px-2 py-1 text-xs rounded touch-target ${u.blocked?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}" data-id="${u.id}" data-blocked="${u.blocked}">${u.blocked?"Unblock":"Block"}</button>
-            <button class="adjustWallet px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 touch-target" data-id="${u.id}" data-phone="${u.phone_number}">Adjust</button>
-          </div>
-        </td>
-      </tr>
+    const list=$("#usersList");
+    list.innerHTML=d.map(u=>`
+      <div class="auction-card">
+        <div class="font-semibold">${u.phone_number}</div>
+        <div class="row"><span class="label">ID</span><span class="value font-mono text-xs">${u.id}</span></div>
+        <div class="row"><span class="label">Balance</span><span class="value">${etb(u.wallet_balance)}</span></div>
+        <div class="row"><span class="label">Verified</span><span class="value"><span class="badge ${u.is_verified?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-700"}">${u.is_verified?"Yes":"No"}</span></span></div>
+        <div class="row"><span class="label">Status</span><span class="value"><span class="badge ${u.blocked?"bg-red-100 text-red-700":"bg-emerald-100 text-emerald-700"}">${u.blocked?"Blocked":"Active"}</span></span></div>
+        <div class="btn-group">
+          <button class="blockUser px-3 py-2 text-xs rounded touch-target ${u.blocked?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}" data-id="${u.id}" data-blocked="${u.blocked}">${u.blocked?"Unblock":"Block"}</button>
+          <button class="adjustWallet px-3 py-2 text-xs rounded bg-blue-100 text-blue-700 touch-target" data-id="${u.id}" data-phone="${u.phone_number}">Adjust Wallet</button>
+        </div>
+      </div>
     `).join("");
     $$(".blockUser").forEach(b=>b.onclick=()=>blockUser(b.dataset.id,b.dataset.blocked==="true"));
     $$(".adjustWallet").forEach(b=>b.onclick=()=>adjustWallet(b.dataset.id,b.dataset.phone));
@@ -365,18 +416,18 @@ function adjustWallet(id,phone){
 async function loadPayments(){
   try{
     const d=await api("/api/admin/payments?status=pending&limit=100");
-    const tbody=$("#paymentsBody");
-    tbody.innerHTML=d.map(p=>`
-      <tr class="hover:bg-slate-50">
-        <td class="px-3 py-2 font-mono text-xs">${p.tx_ref}</td>
-        <td class="px-3 py-2"><span class="badge bg-slate-100 text-slate-700">${p.provider}</span></td>
-        <td class="px-3 py-2 text-right">${etb(p.amount)}</td>
-        <td class="px-3 py-2">${p.user_phone}</td>
-        <td class="px-3 py-2"><span class="badge ${p.status==="pending"?"bg-amber-100 text-amber-700":p.status==="confirmed"?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}">${p.status}</span></td>
-        <td class="px-3 py-2">
-          ${p.status==="pending"?`<div class="flex gap-1"><button class="approvePay px-2 py-1 text-xs rounded bg-emerald-100 text-emerald-700 touch-target" data-ref="${p.tx_ref}">Approve</button><button class="rejectPay px-2 py-1 text-xs rounded bg-red-100 text-red-700 touch-target" data-ref="${p.tx_ref}">Reject</button></div>`:"—"}
-        </td>
-      </tr>
+    const list=$("#paymentsList");
+    list.innerHTML=d.map(p=>`
+      <div class="auction-card">
+        <div class="font-semibold">${p.tx_ref}</div>
+        <div class="row"><span class="label">Provider</span><span class="value"><span class="badge bg-slate-100 text-slate-700">${p.provider}</span></span></div>
+        <div class="row"><span class="label">Amount</span><span class="value">${etb(p.amount)}</span></div>
+        <div class="row"><span class="label">User</span><span class="value">${p.user_phone}</span></div>
+        <div class="row"><span class="label">Status</span><span class="value"><span class="badge ${p.status==="pending"?"bg-amber-100 text-amber-700":p.status==="confirmed"?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}">${p.status}</span></span></div>
+        <div class="btn-group">
+          ${p.status==="pending"?`<button class="approvePay px-3 py-2 text-xs rounded bg-emerald-100 text-emerald-700 touch-target" data-ref="${p.tx_ref}">Approve</button><button class="rejectPay px-3 py-2 text-xs rounded bg-red-100 text-red-700 touch-target" data-ref="${p.tx_ref}">Reject</button>`:"—"}
+        </div>
+      </div>
     `).join("");
     $$(".approvePay").forEach(b=>b.onclick=()=>resolvePayment(b.dataset.ref,"approve"));
     $$(".rejectPay").forEach(b=>b.onclick=()=>resolvePayment(b.dataset.ref,"reject"));
@@ -389,12 +440,24 @@ async function resolvePayment(ref,action){
   catch(e){ toast(e.message,true); }
 }
 
+async function checkAuth(){
+  if(!token){ showLogin(); return false; }
+  try{
+    await api("/api/admin/stats");
+    return true;
+  }catch(e){
+    token=""; localStorage.removeItem("at"); showLogin(); return false;
+  }
+}
+
 (async()=>{
   initTabs();
-  if(token){
-    try{ adminUser=await api("/api/admin/stats"); adminUser={username:"Admin"}; paintHeader(); await loadAll(); }
-    catch(e){ token=""; localStorage.removeItem("at"); showLogin(); }
-  }else{ showLogin(); }
+  const ok=await checkAuth();
+  if(ok){
+    adminUser={username:"Admin"}; // Will be updated after load
+    paintHeader();
+    await loadAll();
+  }
 })();
 </script>
 </body></html>

@@ -1,11 +1,11 @@
-import os, hmac, hashlib, uuid
+import os, hmac, hashlib, uuid, json
 from decimal import Decimal
 from fastapi import APIRouter, Request, HTTPException
 from sqlalchemy import select
 from database import SessionLocal, User, WalletTransaction, PaymentIntent
 
-PLATFORM_FEE_FLAT = Decimal(os.getenv("PLATFORM_FEE_FLAT", "0.50"))          # ETB per bid kept by platform
-PARTNER_COMMISSION_RATE = Decimal(os.getenv("PARTNER_COMMISSION_RATE", "0.10"))  # share of the remainder
+PLATFORM_FEE_FLAT = Decimal(os.getenv("PLATFORM_FEE_FLAT", "0.50"))
+PARTNER_COMMISSION_RATE = Decimal(os.getenv("PARTNER_COMMISSION_RATE", "0.10"))
 WEBHOOK_SECRET = os.getenv("PAYMENT_WEBHOOK_SECRET", "dev-secret")
 router = APIRouter()
 
@@ -23,11 +23,20 @@ async def process_wallet_deposit(session, user_id: int, amount: Decimal, referen
     return True
 
 
-async def initiate_chapa_deposit(user: User, amount: Decimal, provider: str = "chapa") -> dict:
-    """STUB: call Chapa's /transaction/initialize (or Telebirr/CBE equivalent) with httpx and return its checkout_url."""
+async def initiate_chapa_deposit(user: User, amount: Decimal, provider: str = "chapa",
+                                  auction_id: int | None = None, pending_bids: list[int] | None = None) -> dict:
+    """Call Chapa's /transaction/initialize (or Telebirr/CBE equivalent) with httpx and return its checkout_url."""
     tx_ref = f"{provider}-{user.id}-{uuid.uuid4().hex[:12]}"
+    pending_json = json.dumps(pending_bids) if pending_bids else None
     async with SessionLocal() as s, s.begin():
-        s.add(PaymentIntent(user_id=user.id, provider=provider, tx_ref=tx_ref, amount=amount))
+        s.add(PaymentIntent(
+            user_id=user.id,
+            provider=provider,
+            tx_ref=tx_ref,
+            amount=amount,
+            auction_id=auction_id,
+            pending_bids_json=pending_json,
+        ))
     return {"tx_ref": tx_ref, "checkout_url": f"https://checkout.example/{tx_ref}", "status": "pending"}
 
 
@@ -37,6 +46,49 @@ def verify_webhook_signature(raw_body: bytes, signature: str | None) -> bool:
         return False
     expected = hmac.new(WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
+
+
+async def _confirm_payment_intent(s, pi: PaymentIntent):
+    """Helper to credit wallet and execute pending bids if any."""
+    if pi.status != "pending":
+        return {"ok": True, "idempotent": True, "message": "Already processed"}
+
+    await process_wallet_deposit(s, pi.user_id, pi.amount, f"pi-{pi.tx_ref}")
+    pi.status = "confirmed"
+
+    message = "Payment confirmed, wallet credited"
+    if pi.auction_id and pi.pending_bids_json:
+        try:
+            from main import r, META, CNT, LUA_BID
+            pending_bids = json.loads(pi.pending_bids_json)
+            padded = [str(x).zfill(8) for x in pending_bids]
+            res = await r.eval(LUA_BID, 2, META(pi.auction_id), CNT(pi.auction_id), *padded)
+            if res >= 0:
+                filled = int(res)
+                from database import Auction, BidLedger, PartnerCommission, utcnow
+                from sqlalchemy import update
+                a = await s.get(Auction, pi.auction_id)
+                if a:
+                    rows = [BidLedger(auction_id=pi.auction_id, user_id=pi.user_id, bid_amount=x, fee_charged=a.bid_fee) for x in pending_bids]
+                    s.add_all(rows); await s.flush()
+                    pf = min(a.bid_fee, PLATFORM_FEE_FLAT)
+                    ps = ((a.bid_fee - pf) * PARTNER_COMMISSION_RATE).quantize(Decimal("0.01"))
+                    s.add_all([PartnerCommission(auction_id=pi.auction_id, bid_ledger_id=x.id, platform_fee=pf, partner_share=ps) for x in rows])
+                    s.add(WalletTransaction(user_id=pi.user_id, kind="bid_fee", amount=-pi.amount, balance_after=None, reference=f"bid-{pi.tx_ref}"))
+                    await s.execute(update(Auction).where(Auction.id == pi.auction_id).values(filled_slots=Auction.filled_slots + len(pending_bids)))
+                    await s.flush()
+                    message = f"Payment confirmed, {len(pending_bids)} bid(s) placed automatically"
+                    if a.is_room:
+                        status = await r.hget(META(pi.auction_id), "status")
+                        if status == "frozen":
+                            import asyncio
+                            from main import resolve
+                            asyncio.create_task(resolve(pi.auction_id))
+            else:
+                message = "Payment confirmed, wallet credited. Room closed or auction ended — bids not placed (funds remain in wallet)"
+        except Exception as e:
+            message = f"Payment confirmed, wallet credited. Bid execution failed: {e} (funds remain in wallet)"
+    return {"ok": True, "message": message}
 
 
 @router.post("/api/webhooks/payment/{provider}")
@@ -51,11 +103,8 @@ async def payment_webhook(provider: str, request: Request):
         pi = (await s.execute(select(PaymentIntent).where(PaymentIntent.tx_ref == tx_ref).with_for_update())).scalar_one_or_none()
         if not pi or pi.provider != provider:
             raise HTTPException(404, "unknown intent")
-        if pi.status != "pending":
-            return {"ok": True, "idempotent": True}
         if ok:
-            await process_wallet_deposit(s, pi.user_id, pi.amount, f"pi-{pi.tx_ref}")
-            pi.status = "confirmed"
+            return await _confirm_payment_intent(s, pi)
         else:
             pi.status, pi.failure_reason = "failed", str(data.get("reason", "provider reported failure"))
     return {"ok": True}

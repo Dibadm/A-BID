@@ -216,7 +216,12 @@ async def deposit_status(ref: str, u: User = Depends(get_current_user)):
     async with SessionLocal() as s:
         pi = (await s.execute(select(PaymentIntent).where(PaymentIntent.tx_ref == ref, PaymentIntent.user_id == u.id))).scalar_one_or_none()
         if not pi: raise HTTPException(404, "Not found")
-        return {"tx_ref": ref, "status": pi.status, "amount": float(pi.amount), "failure_reason": pi.failure_reason}
+        result = {"tx_ref": ref, "status": pi.status, "amount": float(pi.amount), "failure_reason": pi.failure_reason}
+        if pi.auction_id and pi.status == "confirmed" and pi.pending_bids_json:
+            import json
+            result["auction_id"] = pi.auction_id
+            result["bids_placed"] = len(json.loads(pi.pending_bids_json))
+        return result
 
 
 # ---------- auctions ----------
@@ -302,6 +307,42 @@ async def bid_batch(aid: int, b: BatchIn, user: User = Depends(get_current_user)
     if room and (await r.hget(META(aid), "status")) == "frozen":
         asyncio.create_task(resolve(aid))
     return {"ok": True, "placed": len(amounts), "wallet_balance": balance, "filled_slots": filled}
+
+
+class BidCheckoutIn(BaseModel):
+    bid_amounts: list[int] = Field(min_length=1, max_length=100)
+    payment_method: str = Field(pattern="^(chapa|telebirr|cbebirr|ebirr|mpesa|card)$")
+
+
+@app.post("/api/auctions/{aid}/bid-checkout")
+async def bid_checkout(aid: int, b: BidCheckoutIn, user: User = Depends(get_current_user)):
+    amounts = b.bid_amounts
+    if any(x < 1 or x > 10_000_000 for x in amounts):
+        raise HTTPException(400, "Bids must be positive integers up to 10,000,000")
+
+    async with SessionLocal() as s, s.begin():
+        a = await s.get(Auction, aid)
+        if not a:
+            raise HTTPException(404, "Auction not found")
+        if a.status != "active" or (a.ends_at and a.ends_at <= utcnow()):
+            raise HTTPException(409, "Auction closed")
+        if a.is_room:
+            filled = int((await r.hget(META(aid), "filled")) or a.filled_slots)
+            if filled + len(amounts) > a.max_slots:
+                raise HTTPException(409, "Not enough slots left in this room")
+
+        total = a.bid_fee * len(amounts)
+        provider_map = {
+            "telebirr": "telebirr",
+            "cbebirr": "cbe",
+            "ebirr": "chapa",
+            "mpesa": "chapa",
+            "card": "chapa",
+            "chapa": "chapa",
+        }
+        provider = provider_map.get(b.payment_method, "chapa")
+
+        return await payments.initiate_chapa_deposit(user, total, provider, auction_id=aid, pending_bids=amounts)
 
 
 @app.websocket("/ws")
