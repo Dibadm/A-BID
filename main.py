@@ -238,7 +238,7 @@ async def list_auctions(u: User | None = Depends(get_optional_user)):
         meta = await r.hgetall(META(a.id))
         live = a.status == "active" and meta.get("status", "active") == "active"
         filled = int(meta.get("filled", a.filled_slots))
-        item = {"id": a.id, "title": a.title, "description": a.description, "market_value": float(a.market_value),
+        item = {"id": a.id, "title": a.title, "description": a.description, "image_url": a.image_url, "market_value": float(a.market_value),
                 "bid_fee": float(a.bid_fee), "max_slots": a.max_slots, "filled_slots": filled,
                 "is_room": a.is_room, "status": a.status, "ends_at": iso(a.ends_at),
                 "user_status": None, "user_bids": [], "won": bool(u and a.winner_id == u.id)}

@@ -47,6 +47,7 @@ class Auction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     market_value = mapped_column(Numeric(12, 2))
     bid_fee = mapped_column(Numeric(10, 2))
     max_slots: Mapped[int] = mapped_column(Integer)

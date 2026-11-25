@@ -19,10 +19,10 @@ async def run(reset: bool):
                 s.add(User(phone_number=ph, wallet_balance=Decimal(bal), is_verified=True))
         if not (await s.execute(select(Auction.id).limit(1))).first():
             s.add_all([
-                Auction(title="iPhone 15 Pro Flash Room", description="50 slots only", market_value=Decimal(95000), bid_fee=Decimal(20), max_slots=50, is_room=True),
-                Auction(title="Samsung 55\" Smart TV Room", description="100 slots only", market_value=Decimal(40000), bid_fee=Decimal(10), max_slots=100, is_room=True),
-                Auction(title="MacBook Air M2", description="Open auction", market_value=Decimal(120000), bid_fee=Decimal(5), max_slots=5000, is_room=False, ends_at=now + dt.timedelta(hours=48)),
-                Auction(title="PlayStation 5", description="Open auction", market_value=Decimal(60000), bid_fee=Decimal(5), max_slots=5000, is_room=False, ends_at=now + dt.timedelta(hours=24)),
+                Auction(title="iPhone 15 Pro Flash Room", description="50 slots only", market_value=Decimal(95000), bid_fee=Decimal(20), max_slots=50, is_room=True, image_url="https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400"),
+                Auction(title="Samsung 55\" Smart TV Room", description="100 slots only", market_value=Decimal(40000), bid_fee=Decimal(10), max_slots=100, is_room=True, image_url="https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400"),
+                Auction(title="MacBook Air M2", description="Open auction", market_value=Decimal(120000), bid_fee=Decimal(5), max_slots=5000, is_room=False, ends_at=now + dt.timedelta(hours=48), image_url="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400"),
+                Auction(title="PlayStation 5", description="Open auction", market_value=Decimal(60000), bid_fee=Decimal(5), max_slots=5000, is_room=False, ends_at=now + dt.timedelta(hours=24), image_url="https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=400"),
             ])
     async with SessionLocal() as s:
         for a in (await s.execute(select(Auction).where(Auction.status == "active"))).scalars():
