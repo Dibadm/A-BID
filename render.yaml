@@ -2,8 +2,9 @@ services:
   # Web service (FastAPI + WebSocket)
   - type: web
     name: lowbid-web
-    runtime: docker
-    dockerfilePath: ./Dockerfile
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python seed.py && uvicorn main:app --host 0.0.0.0 --port $PORT
     plan: free
     region: frankfurt
     healthCheckPath: /api/auctions
@@ -20,16 +21,18 @@ services:
         generateValue: true
       - key: DEV_MODE
         value: "0"
+      - key: PYTHON_VERSION
+        value: "3.12.0"
     autoDeploy: true
 
   # Background worker (timer_loop for auction resolution)
   - type: worker
     name: lowbid-timer
-    runtime: docker
-    dockerfilePath: ./Dockerfile
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -c "import asyncio, main; asyncio.run(main.timer_loop())"
     plan: free
     region: frankfurt
-    startCommand: python -c "import asyncio, main; asyncio.run(main.timer_loop())"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -42,24 +45,26 @@ services:
       - key: JWT_SECRET
         fromService:
           name: lowbid-web
+          type: web
           envVarKey: JWT_SECRET
       - key: DEV_MODE
         value: "0"
+      - key: PYTHON_VERSION
+        value: "3.12.0"
     autoDeploy: true
 
   # Cron job to keep service awake (pings every 10 min)
   - type: cron
     name: lowbid-keepalive
     schedule: "*/10 * * * *"
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: free
-    region: frankfurt
+    runtime: python
+    buildCommand: pip install httpx
     startCommand: python -c "import httpx, os; httpx.get(f'https://{os.environ[\"RENDER_EXTERNAL_HOSTNAME\"]}/api/auctions', timeout=10)"
     envVars:
       - key: RENDER_EXTERNAL_HOSTNAME
         fromService:
           name: lowbid-web
+          type: web
           envVarKey: RENDER_EXTERNAL_HOSTNAME
 
 databases:
