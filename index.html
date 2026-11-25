@@ -1,794 +1,244 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A BID Ethiopia</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A BID — Lowest Unique Bid Auctions</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  body{background:#F8FAFC;color:#0f172a}
-  .card{animation:fadeIn .3s ease}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
-  .overflow-x-hidden{overflow-x:hidden}
-  .input-base{font-size:16px !important}
-  .touch-target{min-height:44px}
-  .pill-scroll{scrollbar-width:none;-ms-overflow-style:none}
-  .pill-scroll::-webkit-scrollbar{display:none}
-  .img-fallback{background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);display:flex;align-items:center;justify-content:center;color:#166534}
-  .sheet-enter{animation:slideUp .25s ease}
-  @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
-  .method-btn{border:2px solid #e2e8f0;transition:all .15s}
-  .method-btn.active{border-color:#10b981;background:#f0fdf4}
-  .method-btn.disabled{opacity:.5;pointer-events:none}
-  .method-btn:not(.disabled):hover{border-color:#94a3b8}
-  .bid-status{display:inline-flex;align-items:center;gap:1px;padding:1px 6px;border-radius:9999px;font-size:10px;font-weight:600}
-  .stepper-btn{width:44px;height:44px;flex-shrink:0}
-  .stepper-input{flex:1;min-width:0;height:44px;text-align:center;font-size:1rem}
-  .winner-video{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px}
-  .winner-photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px}
-  .lang-btn{padding:6px 10px;border-radius:8px;font-weight:600;font-size:12px;border:1px solid #e2e8f0;background:#fff;color:#475569}
-  .lang-btn.active{background:#10b981;border-color:#10b981;color:#fff}
-</style>
-</head>
-<body class="min-h-screen pb-20 overflow-x-hidden">
-<header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
-  <div class="max-w-5xl mx-auto px-3 py-2 flex items-center gap-2 flex-wrap">
-    <div class="font-extrabold text-lg text-emerald-600 flex items-center gap-1">
-      A<span class="text-slate-900"> BID</span>
-    </div>
-    <span id="dot" class="w-2.5 h-2.5 rounded-full bg-slate-300 shrink-0" title="live" aria-label="Connection status"></span>
-    <div class="flex-1 min-w-0"></div>
-    <button id="langBtn" class="lang-btn shrink-0 whitespace-nowrap touch-target" aria-label="Language">EN</button>
-    <button id="phone" class="text-xs sm:text-sm bg-slate-100 text-slate-700 rounded-full px-3 py-1.5 touch-target whitespace-nowrap shrink-0" aria-label="Account"></button>
-    <div id="bal" class="text-sm font-bold bg-emerald-50 text-emerald-700 rounded-full px-3 py-1.5 touch-target shrink-0 whitespace-nowrap">ETB —</div>
-    <button id="topup" class="text-sm font-semibold bg-emerald-600 text-white rounded-full px-3 py-1.5 touch-target shrink-0 whitespace-nowrap">+ Top Up</button>
-  </div>
+body{background:#F8FAFC;color:#0f172a;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans Ethiopic",sans-serif}
+button{min-height:44px}input,select,textarea{font-size:16px}
+.card{animation:in .3s ease}@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+</style></head>
+<body class="min-h-screen overflow-x-hidden">
+<header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200">
+ <div class="max-w-6xl mx-auto px-3 sm:px-6 py-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+  <div class="font-extrabold text-xl tracking-tight"><span class="text-slate-900">A</span> <span class="text-emerald-600">BID</span></div>
+  <span id="dot" class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+  <div class="flex-1"></div>
+  <div class="flex items-center text-sm font-semibold bg-slate-100 rounded-full px-1"><button id="lEn" class="px-2">EN</button><span class="text-slate-400">|</span><button id="lAm" class="px-2">አማርኛ</button></div>
+  <button id="phone" class="text-xs bg-slate-100 rounded-full px-3"></button>
+  <div id="bal" class="text-sm font-bold bg-emerald-50 text-emerald-700 rounded-full px-3 py-2.5 whitespace-nowrap"></div>
+  <button id="topup" class="text-sm font-semibold bg-emerald-600 text-white rounded-full px-4 whitespace-nowrap" data-i18n="topUp"></button>
+ </div>
 </header>
-<main class="max-w-5xl mx-auto px-3 pb-4">
-  <!-- How It Works Strip -->
-  <section class="mb-4" aria-label="How it works">
-    <div class="grid grid-cols-3 gap-2 text-center">
-      <div class="bg-white rounded-xl p-3 border border-slate-200 touch-target">
-        <div class="w-8 h-8 mx-auto mb-1.5 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 font-bold text-sm">1</div>
-        <div class="text-xs font-medium text-slate-700" data-i18n="how1_title">Deposit</div>
-        <div class="text-[10px] text-slate-500" data-i18n="how1_desc">Add ETB via Chapa/Telebirr/CBE</div>
-      </div>
-      <div class="bg-white rounded-xl p-3 border border-slate-200 touch-target">
-        <div class="w-8 h-8 mx-auto mb-1.5 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">2</div>
-        <div class="text-xs font-medium text-slate-700" data-i18n="how2_title">Bid</div>
-        <div class="text-[10px] text-slate-500" data-i18n="how2_desc">Place unique bids on items</div>
-      </div>
-      <div class="bg-white rounded-xl p-3 border border-slate-200 touch-target">
-        <div class="w-8 h-8 mx-auto mb-1.5 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 font-bold text-sm">3</div>
-        <div class="text-xs font-medium text-slate-700" data-i18n="how3_title">Win</div>
-        <div class="text-[10px] text-slate-500" data-i18n="how3_desc">Lowest unique bid wins</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Filter Pills -->
-  <div class="flex gap-2 my-4 pill-scroll overflow-x-auto pb-2" id="pills" role="tablist" aria-label="Filter auctions"></div>
-
-  <!-- Flash Rooms Section -->
-  <section id="secRooms" class="mb-6 rounded-2xl p-3 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200" aria-labelledby="rooms-heading">
-    <h2 id="rooms-heading" class="font-bold text-lg mb-3 flex items-center gap-2">⚡ <span data-i18n="flash_rooms">FLASH ROOMS</span> <span class="text-[10px] bg-amber-400 text-amber-950 rounded-full px-2 py-0.5" data-i18n="limited_slots">LIMITED SLOTS</span></h2>
-    <div id="rooms" class="grid gap-3 sm:grid-cols-2"></div>
-    <p id="roomsEmpty" class="text-sm text-slate-500 text-center py-4 hidden" data-i18n="no_rooms">No flash rooms right now.</p>
-  </section>
-
-  <!-- Bidded Items Section -->
-  <section id="secItems" class="mb-6" aria-labelledby="items-heading">
-    <h2 id="items-heading" class="font-bold text-lg mb-3">🛍️ <span data-i18n="bidded_items">BIDDED ITEMS</span></h2>
-    <div id="items" class="grid gap-3 sm:grid-cols-2"></div>
-    <p id="itemsEmpty" class="text-sm text-slate-500 text-center py-4 hidden" data-i18n="no_items">No items right now.</p>
-  </section>
-
-  <!-- Winners Section -->
-  <section id="secWinners" class="mb-6 hidden" aria-labelledby="winners-heading">
-    <h2 id="winners-heading" class="font-bold text-lg mb-3 flex items-center gap-2">🏆 <span data-i18n="past_winners">PAST WINNERS</span></h2>
-    <div id="winners" class="grid gap-4 sm:grid-cols-2"></div>
-    <p id="winnersEmpty" class="text-sm text-slate-500 text-center py-4" data-i18n="no_winners">No past winners yet.</p>
-  </section>
+<main class="max-w-6xl mx-auto px-3 sm:px-6 pb-20">
+ <section id="how" class="grid grid-cols-3 gap-2 sm:gap-4 mt-4" aria-label="How it works"></section>
+ <div id="pills" class="flex gap-2 my-4 overflow-x-auto"></div>
+ <section id="secRooms" class="mb-8 rounded-3xl p-3 sm:p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200">
+  <h2 class="font-bold text-lg mb-3" data-i18n="rooms"></h2>
+  <div id="rooms" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  <p id="roomsEmpty" class="text-sm text-slate-500 hidden" data-i18n="noRooms"></p>
+ </section>
+ <section id="secItems" class="mb-8">
+  <h2 class="font-bold text-lg mb-3" data-i18n="items"></h2>
+  <div id="items" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  <p id="itemsEmpty" class="text-sm text-slate-500 hidden" data-i18n="noItems"></p>
+ </section>
+ <section id="secWinners" class="hidden mb-8">
+  <h2 class="font-bold text-lg mb-3" data-i18n="winnersTitle"></h2>
+  <div id="winnersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  <p id="winnersEmpty" class="text-sm text-slate-500 hidden" data-i18n="noWinners"></p>
+ </section>
 </main>
-
-<!-- Modal (reused for login, topup) -->
-<div id="modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-  <div id="mbox" class="bg-white rounded-2xl p-5 w-full max-w-sm max-h-[90vh] overflow-y-auto"></div>
+<div id="sheet" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center sm:p-4">
+ <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl flex flex-col max-h-[92vh] min-w-0">
+  <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-2"><h3 id="shTitle" class="font-bold text-lg"></h3><button onclick="closeSheet()" class="w-11 h-11 shrink-0 rounded-full bg-slate-100 font-bold">✕</button></div>
+  <div id="shBody" class="overflow-y-auto p-4 flex-1 min-h-0"></div>
+  <div id="shFoot" class="p-4 border-t border-slate-200 bg-white rounded-b-3xl"></div>
+ </div>
 </div>
-
-<!-- Checkout Sheet (bottom sheet on mobile, centered modal on desktop) -->
-<div id="checkoutSheet" class="hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
-  <div class="fixed inset-0 bg-black/50" onclick="closeCheckout()"></div>
-  <div class="fixed bottom-0 left-0 right-0 sm:max-w-md sm:mx-auto sm:rounded-t-2xl sm:rounded-b-none sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 z-50 bg-white sheet-enter max-h-[90vh] flex flex-col" style="border-radius:1.5rem 1.5rem 0 0;">
-    <div class="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
-      <h3 id="checkout-title" class="font-bold text-lg" data-i18n="checkout">Checkout</h3>
-      <button onclick="closeCheckout()" class="text-slate-500 hover:text-slate-700 text-2xl leading-none p-1">×</button>
-    </div>
-    <div id="checkoutBody" class="flex-1 overflow-y-auto p-4 space-y-4 pb-6"></div>
-    <div class="sticky bottom-0 bg-white border-t border-slate-100 px-4 py-3 shrink-0 safe-area-bottom">
-      <button id="checkoutPayBtn" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target disabled:opacity-50 disabled:cursor-not-allowed" disabled data-i18n="pay_place_bid">Pay & Place Bid</button>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-60 hidden px-4 py-2 rounded-full text-sm text-white"></div>
-
+<div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] hidden px-4 py-2 rounded-full text-sm text-white max-w-[90vw] text-center"></div>
 <script>
 const $=s=>document.querySelector(s);
-const $$=s=>document.querySelectorAll(s);
-let token=localStorage.getItem("t")||"", me=null, filter="all", cards={}, data=[], cfg={}, lang=localStorage.getItem("lang")||"en";
-
-const ST={
-  leading:["bg-emerald-500 text-white","🟢 Leading"],
-  unique:["bg-blue-500 text-white","🔵 Unique"],
-  duplicated:["bg-amber-400 text-amber-950","🟡 Duplicated"],
-  closed:["bg-red-500 text-white","🔴 Closed"]
-};
-
-const TRANSLATIONS = {
-  en: {
-    how1_title:"Deposit", how1_desc:"Add ETB via Chapa/Telebirr/CBE",
-    how2_title:"Bid", how2_desc:"Place unique bids on items",
-    how3_title:"Win", how3_desc:"Lowest unique bid wins",
-    flash_rooms:"FLASH ROOMS", limited_slots:"LIMITED SLOTS", bidded_items:"BIDDED ITEMS", past_winners:"PAST WINNERS",
-    no_rooms:"No flash rooms right now.", no_items:"No items right now.", no_winners:"No past winners yet.",
-    all:"All", rooms:"⚡ FLASH ROOMS", items:"🛍️ BIDDED ITEMS", winners:"🏆 WINNERS",
-    slots_left:"Slots Left", filled:"filled", bid_fee_label:"/ bid",
-    single_bid:"Single Bid", multi_bid_pack:"Multi-Bid Pack",
-    consecutive:"Consecutive", random_unique:"Random Unique", start_num:"Start #",
-    total:"Total:", buy_pack:"Buy Pack",
-    place_bid:"Place Bid", my_bids:"My Bids",
-    checkout:"Checkout", payment_method:"Payment Method",
-    wallet_label:"A BID Wallet", telebirr_label:"Telebirr (via Chapa)", cbebirr_label:"CBE Birr (via Chapa)", chapa_label:"Ebirr / M-Pesa / Card (via Chapa)",
-    insufficient:"Insufficient (need {total}, have {bal})", balance:"Balance: {bal}",
-    wallet_low:"Wallet balance too low. Top up or choose another method.",
-    pay_place_bid:"Pay & Place Bid",
-    login_title:"Log in to A BID", phone_placeholder:"+2519XXXXXXXX", otp_placeholder:"6-digit code", send_code:"Send code", verify_continue:"Verify & continue",
-    topup_title:"Top Up Wallet", topup_continue:"Continue",
-    winner_retail:"Retail Value:", winner_bid:"Winning Bid:", winner_city:"City:", winner_quote:"Quote:",
-    status_leading:"Leading", status_unique:"Unique", status_duplicated:"Duplicated", status_closed:"Closed", status_won:"You won!",
-    room_capacity:"Room Capacity",
-  },
-  am: {
-    how1_title:"ገቢ", how1_desc:"ETB በ ቻፓ/ቴሌቢር/ሲቢኤ ያስገቡ",
-    how2_title:"ግዛ", how2_desc:"ብቁ ግዛት ላይ ይግዙ",
-    how3_title:"ስሩ", how3_desc:"የተለየ የቀሪ ግዛ ይሻላል",
-    flash_rooms:"⚡ ፋሽ ሆሮች", limited_slots:"የተገበዘ ክፍሎች", bidded_items:"🛍️ የተገዛ እቃዎች", past_winners:"የቀድሞ ስሮች",
-    no_rooms:"ሁለገብ ፋሽ ሆሮች የለም።", no_items:"ሁለገብ እቃዎች የለም።", no_winners:"ሁለገብ ስሮች የለም።",
-    all:"ሁሉም", rooms:"⚡ ፋሽ ሆሮች", items:"🛍️ የተገዛ እቃዎች", winners:"🏆 ስሮች",
-    slots_left:"ቀሪ ክፍሎች", filled:"ተሞልቷል", bid_fee_label:"/ ግዛ",
-    single_bid:"አንድ ግዛ", multi_bid_pack:"ብዙ ግዛት ፓክ",
-    consecutive:"ቀጣይ", random_unique:"ማሳሪያ ብቁ", start_num:"የመጀመሪያ #",
-    total:"ጠቅላላ:", buy_pack:"ፓክ ገዛ",
-    place_bid:"ግዛ አስገብ", my_bids:"የእኔ ግዛት",
-    checkout:"ክፍያ", payment_method:"የክፍያ ዘዴ",
-    wallet_label:"A BID ባለብስ", telebirr_label:"ቴሌቢር (በ ቻፓ)", cbebirr_label:"ሲቢኤ ቢር (በ ቻፓ)", chapa_label:"ኤቢር/ማፒሳ/ካርድ (በ ቻፓ)",
-    insufficient:"ያልተሳካ (ያስፈልጋል {total}, አሁን {bal})", balance:"ቀሪ ብድር: {bal}",
-    wallet_low:"የባለብስ ብድር ቀሪ ነው። ያስገቡ ወይም ሌላ ዘዴ ይምረጡ።",
-    pay_place_bid:"ክፍያ እና ግዛ አስገብ",
-    login_title:"ወደ A BID ግባ", phone_placeholder:"+2519XXXXXXXX", otp_placeholder:"6-ቁጥር ኮድ", send_code:"ኮድ ላክ", verify_continue:"ማረጋገጥ እና ቀጥል",
-    topup_title:"ባለብስ ያስገቡ", topup_continue:"ቀጥል",
-    winner_retail:"የገበያ ዋጋ:", winner_bid:"የስሩ ግዛ:", winner_city:"ከተማ:", winner_quote:"ጉዳይ:",
-    status_leading:"በፊት ነው", status_unique:"ብቁ", status_duplicated:"ተደጋጋሚ", status_closed:"ተዘጋጁል", status_won:"ስሩ!",
-    room_capacity:"የሆር አቅም",
-  }
-};
-
-function t(key, params={}){
-  const dict = TRANSLATIONS[lang] || TRANSLATIONS.en;
-  let str = dict[key] || key;
-  Object.entries(params).forEach(([k,v])=>{ str = str.replace(new RegExp("{"+k+"}","g"), v); });
-  return str;
-}
-
-function applyTranslations(){
-  $$("[data-i18n]").forEach(el=>{
-    const key = el.dataset.i18n;
-    el.textContent = t(key);
-  });
-  // Special handling for placeholders
-  const ph = $("#ph"); if(ph) ph.placeholder = t("phone_placeholder");
-  const otp = $("#otp"); if(otp) otp.placeholder = t("otp_placeholder");
-  // Update dynamic texts
-  if($("#go")) $("#go").textContent = t($("#go").dataset.i18n || "send_code");
-  if($("#pay")) $("#pay").textContent = t($("#pay").dataset.i18n || "topup_continue");
-  // Update pills
-  pills();
-  // Update checkout if open
-  if(!$("#checkoutSheet").classList.contains("hidden")) renderCheckoutSheet();
-  // Update cards
-  Object.values(cards).forEach(el=>{ if(el.a) upd(el, el.a); });
-  // Update winners
-  renderWinners();
-}
-
-function setLang(l){
-  lang = l;
-  localStorage.setItem("lang", l);
-  document.documentElement.lang = l;
-  $$("#langBtn").forEach(b=>b.textContent = l==="en"?"EN":"አማርኛ");
-  applyTranslations();
-}
-
-function toast(msg, bad=false){
-  const t=$("#toast");
-  t.textContent=msg;
-  t.className="fixed bottom-4 left-1/2 -translate-x-1/2 z-60 px-4 py-2 rounded-full text-sm text-white "+(bad?"bg-red-600":"bg-slate-900");
-  t.classList.remove("hidden");
-  setTimeout(()=>t.classList.add("hidden"), 3500);
-}
-
-async function api(path, opts={}){
-  const h={"Content-Type":"application/json"};
-  if(token) h.Authorization="Bearer "+token;
-  const res=await fetch(path, {...opts, headers:h});
-  const d=await res.json().catch(()=>({}));
-  if(res.status===401 && token){ token=""; localStorage.removeItem("t"); me=null; paintMe(); }
-  if(!res.ok) throw new Error(typeof d.detail==="string"?d.detail:"Something went wrong");
-  return d;
-}
-
-const etb=n=>"ETB "+Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
-
-function modal(html){
-  $("#mbox").innerHTML=html;
-  $("#modal").classList.remove("hidden");
-  document.body.style.overflow="hidden";
-}
-function closeModal(){
-  $("#modal").classList.add("hidden");
-  document.body.style.overflow="";
-}
-$("#modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
-
-function paintMe(){
-  $("#bal").textContent=me?etb(me.wallet_balance):"ETB —";
-  const p=$("#phone");
-  p.textContent=me?me.phone_number:"Log in";
-  p.classList.remove("hidden");
-  p.onclick=me?()=>{ if(confirm("Log out?")){ token=""; localStorage.removeItem("t"); me=null; paintMe(); sync(); }}:loginModal;
-}
-
-function requireAuth(fn){
-  return (...args)=>{ if(!token){ loginModal(); return; } fn(...args); };
-}
-
-function loginModal(){
-  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4" data-i18n="login_title">${t("login_title")}</h3>
-  <input id="ph" type="tel" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="${t("phone_placeholder")}" value="+251" autocomplete="tel">
-  <div id="otpBox" class="hidden">
-    <input id="otp" type="text" inputmode="numeric" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3 text-center tracking-widest" placeholder="${t("otp_placeholder")}" maxlength="6" autocomplete="one-time-code">
-  </div>
-  <button id="go" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target" data-i18n="send_code">${t("send_code")}</button>`);
-  let sent=false;
-  $("#go").onclick=async()=>{
-    try{
-      if(!sent){
-        await api("/api/auth/send-otp",{method:"POST",body:JSON.stringify({phone_number:$("#ph").value.trim()})});
-        sent=true;
-        $("#otpBox").classList.remove("hidden");
-        $("#go").textContent=t("verify_continue");
-        $("#go").dataset.i18n="verify_continue";
-      }else{
-        const d=await api("/api/auth/verify-otp",{method:"POST",body:JSON.stringify({phone_number:$("#ph").value.trim(),code:$("#otp").value.trim()})});
-        token=d.token;
-        localStorage.setItem("t",token);
-        closeModal();
-        await sync();
-      }
-    }catch(e){ toast(e.message, true); }
-  };
-}
-
-$("#topup").onclick=()=>{ if(!token) return loginModal(); topupModal(); };
-
-function topupModal(){
-  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4" data-i18n="topup_title">${t("topup_title")}</h3>
-  <div class="grid grid-cols-4 gap-2 mb-3">${[50,100,200,500].map(v=>`<button class="pre border border-slate-300 rounded-xl py-3 text-sm touch-target" data-v="${v}">${v} ETB</button>`).join("")}</div>
-  <input id="amt" type="number" min="10" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Amount in ETB" value="100">
-  <select id="prov" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-4"><option value="chapa">Chapa</option><option value="telebirr">Telebirr</option><option value="cbe">CBE Birr</option></select>
-  <button id="pay" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target" data-i18n="topup_continue">${t("topup_continue")}</button>`);
-  $$(".pre").forEach(b=>b.onclick=()=>$("#amt").value=b.dataset.v);
-  $("#pay").onclick=async()=>{
-    const body=JSON.stringify({amount:$("#amt").value,provider:$("#prov").value});
-    try{
-      if(cfg.dev_mode){
-        me=await api("/api/wallet/deposit",{method:"POST",body});
-        paintMe();
-        closeModal();
-        toast("Wallet topped up (dev mode)");
-      }else{
-        const d=await api("/api/wallet/deposit/initiate",{method:"POST",body});
-        window.open(d.checkout_url,"_blank");
-        closeModal();
-        pollDeposit(d.tx_ref);
-      }
-    }catch(e){ toast(e.message, true); }
-  };
-}
-
-async function pollDeposit(ref,n=0){
-  if(n>60) return;
-  try{
-    const d=await api("/api/wallet/deposit/status/"+ref);
-    if(d.status==="confirmed"){ toast("Deposit confirmed ✔"); return sync(); }
-    if(d.status==="failed") return toast("Deposit failed", true);
-  }catch(e){}
-  setTimeout(()=>pollDeposit(ref,n+1), 4000);
-}
-
-function pills(){
-  const labels = {all:t("all"), rooms:t("rooms"), items:t("items"), winners:t("winners")};
-  const keys = ["all","rooms","items","winners"];
-  $("#pills").innerHTML=keys.map(k=>`<button role="tab" data-k="${k}" class="px-4 py-2 rounded-full text-sm font-semibold border touch-target whitespace-nowrap shrink-0 ${filter===k?"bg-emerald-600 text-white border-emerald-600":"bg-white border-slate-200"}" aria-selected="${filter===k}">${labels[k]}</button>`).join("");
-  $$("#pills button").forEach(b=>b.onclick=()=>{ filter=b.dataset.k; pills(); applyFilter(); });
-}
-
-function applyFilter(){
-  $("#secRooms").classList.toggle("hidden", filter==="items" || filter==="winners");
-  $("#secItems").classList.toggle("hidden", filter==="rooms" || filter==="winners");
-  $("#secWinners").classList.toggle("hidden", filter!=="winners");
-  if(filter==="winners") loadWinners();
-}
-
-function mkCard(a){
-  const el=document.createElement("div");
-  el.className="card bg-white rounded-2xl border border-slate-200 p-4 shadow-sm";
-  const st={tab:"single",pack:10,mode:"consec",n:1};
-  el.st=st;
-
-  el.innerHTML=`
-    <div class="mb-3 aspect-video rounded-xl overflow-hidden relative">
-      <img data-k="image" class="w-full h-full object-contain p-3 hidden img-fallback" src="" alt="" onerror="this.onerror=null; this.src=''; this.classList.remove('hidden'); this.innerHTML=''; this.style.background='linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%)'; this.alt='Product image'; this.title=''; this.style.display='flex'; this.style.alignItems='center'; this.style.justifyContent='center'; this.style.color='#166534'; this.style.fontSize='2rem'; this.textContent='📦';">
-    </div>
-    <div class="flex justify-between gap-2 mb-2">
-      <div class="min-w-0">
-        <div class="font-bold truncate" data-k="title"></div>
-        <div class="text-xs text-slate-500 truncate" data-k="desc"></div>
-      </div>
-      <div data-k="badge" class="text-[11px] h-fit rounded-full px-2 py-1 font-semibold whitespace-nowrap hidden shrink-0"></div>
-    </div>
-    <div class="text-sm mb-2"><span class="line-through text-slate-400" data-k="val"></span> <span class="font-semibold text-emerald-700" data-k="fee"></span> <span data-i18n="bid_fee_label">${t("bid_fee_label")}</span></div>
-    <div data-k="cap" class="mb-2"></div>
-    <div class="text-xs text-slate-600 flex justify-between mb-3"><span data-k="bids"></span><span data-k="timer" class="font-mono font-semibold"></span></div>
-    <div data-k="ctl" class="space-y-3">
-      <div class="flex bg-slate-100 rounded-xl p-1 text-sm">
-        <button data-t="single" class="tab flex-1 rounded-lg py-2 touch-target font-medium" data-i18n="single_bid">${t("single_bid")}</button>
-        <button data-t="pack" class="tab flex-1 rounded-lg py-2 touch-target font-medium" data-i18n="multi_bid_pack">${t("multi_bid_pack")}</button>
-      </div>
-      <div data-p="single" class="flex items-center gap-2">
-        <button class="dec stepper-btn rounded-xl bg-slate-100 font-bold text-xl touch-target" aria-label="Decrease">−</button>
-        <input type="number" min="1" value="1" class="stepper-input input-base border border-slate-300 rounded-xl touch-target" inputmode="numeric">
-        <button class="inc stepper-btn rounded-xl bg-slate-100 font-bold text-xl touch-target" aria-label="Increase">+</button>
-        <button class="place bg-emerald-600 text-white rounded-xl px-4 py-3 font-semibold touch-target shrink-0 whitespace-nowrap" data-i18n="place_bid">${t("place_bid")}</button>
-      </div>
-      <div data-p="pack" class="hidden space-y-3">
-        <div class="grid grid-cols-3 gap-2">${[10,50,100].map(n=>`<button data-n="${n}" class="pk border border-slate-300 rounded-xl py-2.5 text-sm touch-target">${n} Bids</button>`).join("")}</div>
-        <div class="flex gap-2">
-          <button data-m="consec" class="md flex-1 border border-slate-300 rounded-xl py-2.5 touch-target font-medium" data-i18n="consecutive">${t("consecutive")}</button>
-          <button data-m="random" class="md flex-1 border border-slate-300 rounded-xl py-2.5 touch-target font-medium" data-i18n="random_unique">${t("random_unique")}</button>
-        </div>
-        <div data-k="startRow" class="flex items-center gap-2 text-sm hidden">
-          <span class="text-slate-600" data-i18n="start_num">${t("start_num")}</span>
-          <input type="number" min="1" value="1" class="start w-20 input-base border border-slate-300 rounded-xl px-3 py-2.5 text-center touch-target" inputmode="numeric">
-        </div>
-        <div class="text-sm text-slate-600"><span data-i18n="total">${t("total")}</span> <b data-k="total" class="font-semibold text-emerald-700"></b></div>
-        <button class="buy w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target" data-i18n="buy_pack">${t("buy_pack")} • <span data-k="buyTotal" class="font-normal"></span></button>
-      </div>
-    </div>
-    <div data-k="mine" class="mt-3 hidden">
-      <button class="tgl text-xs font-semibold text-slate-600 flex items-center gap-1" data-i18n="my_bids">▸ ${t("my_bids")}</button>
-      <div class="list hidden flex flex-wrap gap-1 mt-2"></div>
-    </div>`;
-
-  const q=s=>el.querySelector(s);
-  const qa=s=>el.querySelectorAll(s);
-
-  const mode=()=>{
-    qa(".tab").forEach(b=>b.className="tab flex-1 rounded-lg py-2 touch-target font-medium "+(b.dataset.t===st.tab?"bg-white shadow font-semibold":""));
-    q('[data-p="single"]').classList.toggle("hidden", st.tab!=="single");
-    q('[data-p="pack"]').classList.toggle("hidden", st.tab!=="pack");
-    qa(".pk").forEach(b=>b.className="pk border border-slate-300 rounded-xl py-2.5 text-sm touch-target "+(+b.dataset.n===st.pack?"bg-emerald-600 text-white border-emerald-600":""));
-    qa(".md").forEach(b=>b.className="md flex-1 border border-slate-300 rounded-xl py-2.5 touch-target font-medium "+(b.dataset.m===st.mode?"bg-emerald-600 text-white border-emerald-600":""));
-    const showStart=st.mode==="consec";
-    q('[data-k="startRow"]').classList.toggle("hidden", !showStart);
-    const fee=el.a?.bid_fee||0;
-    const total=st.pack*fee;
-    q('[data-k="total"]').textContent=etb(total);
-    q('[data-k="buyTotal"]').textContent=etb(total);
-  };
-
-  el.refreshMode=mode;
-
-  qa(".tab").forEach(b=>b.onclick=()=>{ st.tab=b.dataset.t; mode(); });
-  qa(".pk").forEach(b=>b.onclick=()=>{ st.pack=+b.dataset.n; mode(); });
-  qa(".md").forEach(b=>b.onclick=()=>{ st.mode=b.dataset.m; mode(); });
-
-  q(".dec").onclick=()=>{ const i=q(".num"); i.value=Math.max(1, (+i.value||1)-1); };
-  q(".inc").onclick=()=>{ const i=q(".num"); i.value=(+i.value||0)+1; };
-
-  q(".tgl").onclick=()=>{ const l=q(".list"); l.classList.toggle("hidden"); q(".tgl").innerHTML=(l.classList.contains("hidden")?"▸":"▾")+' '+t("my_bids"); };
-
-  // Single bid: open checkout sheet
-  q(".place").onclick=e=>{
-    const v=Math.floor(+q(".num").value);
-    if(!(v>=1)) return toast("Enter a positive whole number", true);
-    openCheckoutSheet(el.a, [v]);
-  };
-
-  // Pack bid: open checkout sheet
-  q(".buy").onclick=e=>{
-    const n=st.pack;
-    let amts=[];
-    if(st.mode==="consec"){
-      const s=Math.max(1, Math.floor(+q(".start").value||1));
-      for(let i=0;i<n;i++) amts.push(s+i);
-    }else{
-      const taken=new Set((el.a.user_bids||[]).map(b=>b.amount));
-      const range=Math.max(n*10,200);
-      const set=new Set();
-      let g=0;
-      while(set.size<n && g++<100000){
-        const x=1+Math.floor(Math.random()*range);
-        if(!set.has(x) && !taken.has(x)) set.add(x);
-      }
-      amts=[...set];
-    }
-    openCheckoutSheet(el.a, amts);
-  };
-
-  mode();
-  return el;
-}
-
-function upd(el,a){
-  el.a=a;
-  const q=s=>el.querySelector(`[data-k="${s}"]`);
-
-  q("title").textContent=a.title;
-  q("desc").textContent=a.description||"";
-  q("val").textContent=etb(a.market_value);
-  q("fee").textContent=etb(a.bid_fee);
-
-  const img=q("image");
-  if(a.image_url){
-    img.src=a.image_url;
-    img.alt=a.title;
-    img.classList.remove("hidden");
-    img.onerror=()=>{
-      img.src="";
-      img.alt="";
-      img.classList.remove("hidden");
-      img.style.background="linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%)";
-      img.style.display="flex";
-      img.style.alignItems="center";
-      img.style.justifyContent="center";
-      img.style.color="#166534";
-      img.style.fontSize="2rem";
-      img.textContent="📦";
-      img.onerror=null;
-    };
-  }else{
-    img.classList.add("hidden");
-    img.onerror=null;
-  }
-
-  const left=Math.max(0, a.max_slots-a.filled_slots);
-  const pct=Math.min(100, a.filled_slots/a.max_slots*100);
-  const slotsLeftText = t("slots_left");
-  const filledText = t("filled");
-  q("cap").innerHTML=a.is_room?`<div class="flex justify-between text-xs font-semibold"><span data-i18n="room_capacity">${t("room_capacity")}</span><span class="${left<=10?"text-red-600 animate-pulse":"text-emerald-700"}">${left} ${slotsLeftText}</span></div><div class="h-2 bg-slate-100 rounded-full mt-1 overflow-hidden"><div class="h-full ${pct>80?"bg-red-500":"bg-emerald-500"} transition-all" style="width:${pct}%"></div></div><div class="text-[11px] text-slate-500 mt-1">${a.filled_slots} / ${a.max_slots} ${filledText}</div>`:"";
-
-  q("bids").textContent=a.is_room?"":`${a.filled_slots.toLocaleString()} ${t("bids")}`;
-
-  el.ends=a.ends_at?new Date(a.ends_at).getTime():null;
-
-  const b=q("badge"), s=ST[a.user_status];
-  b.classList.toggle("hidden", !s);
-  if(s){ 
-    const statusLabels = {leading:t("status_leading"), unique:t("status_unique"), duplicated:t("status_duplicated"), closed:t("status_closed")};
-    const label = statusLabels[a.user_status] || s[1];
-    b.className="text-[11px] h-fit rounded-full px-2 py-1 font-semibold whitespace-nowrap "+s[0]; 
-    b.textContent=label; 
-  }
-  if(a.won){ b.className="text-[11px] h-fit rounded-full px-2 py-1 font-semibold bg-yellow-400 text-yellow-950"; b.textContent=t("status_won"); }
-
-  const live=a.status==="active";
-  q("ctl").classList.toggle("hidden", !live);
-
-  const m=q("mine");
-  m.classList.toggle("hidden", !a.user_bids?.length);
-  el.querySelector(".list").innerHTML=(a.user_bids||[]).map(x=>`<span class="bid-status ${x.unique?"bg-blue-100 text-blue-800":"bg-amber-100 text-amber-800"}" title="${x.unique?"unique":"duplicated"}">${x.amount}${x.unique?" ✓":" ✗"}</span>`).join("");
-
-  el.refreshMode();
-  tick(el);
-}
-
-function tick(el){
-  const t=el.querySelector('[data-k="timer"]');
-  if(!el.a) return;
-  if(el.a.status!=="active"){ t.textContent="Ended"; return; }
-  if(!el.ends){ t.textContent=""; return; }
-  let s=Math.max(0, Math.floor((el.ends-Date.now())/1000));
-  const d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60);
-  t.textContent=(d?d+"d ":"")+[h,m,s%60].map(x=>String(x).padStart(2,"0")).join(":");
-}
-
-setInterval(()=>Object.values(cards).forEach(tick), 1000);
-
-function render(list){
-  const seen=new Set();
-  list.forEach(a=>{
-    seen.add(a.id);
-    let el=cards[a.id];
-    if(!el){ el=cards[a.id]=mkCard(a); }
-    const host=a.is_room?$("#rooms"):$("#items");
-    if(el.parentNode!==host) host.appendChild(el);
-    upd(el,a);
-  });
-  Object.keys(cards).forEach(id=>{ if(!seen.has(+id)){ cards[id].remove(); delete cards[id]; } });
-  $("#roomsEmpty").classList.toggle("hidden", list.some(a=>a.is_room));
-  $("#itemsEmpty").classList.toggle("hidden", list.some(a=>!a.is_room));
-}
-
-async function sync(){
-  try{
-    const [a,m]=await Promise.all([api("/api/auctions"), token?api("/api/me").catch(()=>null):null]);
-    data=a;
-    if(m) me=m;
-    paintMe();
-    render(a);
-  }catch(e){}
-}
-
-let ws, wsTimer;
-function connect(){
-  const p=location.protocol==="https:"?"wss":"ws";
-  ws=new WebSocket(`${p}://${location.host}/ws`);
-  ws.onopen=()=>{ $("#dot").className="w-2.5 h-2.5 rounded-full bg-emerald-500"; setInterval(()=>ws.readyState===1&&ws.send("ping"), 25000); };
-  ws.onmessage=e=>{
-    const m=JSON.parse(e.data);
-    if(m.type==="slots" && cards[m.auction_id] && cards[m.auction_id].a){
-      cards[m.auction_id].a.filled_slots=m.filled_slots;
-      upd(cards[m.auction_id], cards[m.auction_id].a);
-    }
-    if(m.type==="closed" || m.type==="slots") sync();
-  };
-  ws.onclose=()=>{ $("#dot").className="w-2.5 h-2.5 rounded-full bg-slate-300"; clearTimeout(wsTimer); wsTimer=setTimeout(connect, 2000); };
-  ws.onerror=()=>ws.close();
-}
-
-// ===== Winners =====
-async function loadWinners(){
-  try{
-    const w = await api("/api/winners");
-    renderWinners(w);
-  }catch(e){}
-}
-
-function renderWinners(list){
-  const container = $("#winners");
-  if(!container) return;
-  const data = list || (window.winnersCache || []);
-  if(!list) window.winnersCache = data;
-  if(!data.length){
-    container.innerHTML = `<p class="text-sm text-slate-500 text-center py-8 col-span-2" data-i18n="no_winners">${t("no_winners")}</p>`;
-    return;
-  }
-  container.innerHTML = data.map(w=>`
-    <div class="card bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-      <div class="font-bold text-slate-900 mb-2">${w.title}</div>
-      ${w.winner_video_url ? `<video class="winner-video mb-3" controls playsinline src="${w.winner_video_url}" poster="${w.winner_photo_url||''}"></video>` : ''}
-      ${w.winner_photo_url && !w.winner_video_url ? `<img class="winner-photo mb-3" src="${w.winner_photo_url}" alt="${w.title}">` : ''}
-      <div class="grid grid-cols-2 gap-2 text-xs mb-2">
-        <div><span class="text-slate-500" data-i18n="winner_retail">${t("winner_retail")}</span> <span class="font-semibold text-emerald-700">${etb(w.market_value)}</span></div>
-        <div><span class="text-slate-500" data-i18n="winner_bid">${t("winner_bid")}</span> <span class="font-semibold text-blue-700">#${w.winning_bid}</span></div>
-        <div class="col-span-2"><span class="text-slate-500" data-i18n="winner_city">${t("winner_city")}</span> <span class="font-medium">${w.winner_city||"—"}</span></div>
-        <div class="col-span-2"><span class="text-slate-500" data-i18n="winner_phone">${t("winner_phone")||"Winner:"}</span> <span class="font-mono text-slate-700">${w.winner_phone_masked}</span></div>
-      </div>
-      ${w.winner_quote ? `<p class="text-sm text-slate-600 italic border-t border-slate-100 pt-2">"${w.winner_quote}"</p>` : ''}
-    </div>
-  `).join("");
-}
-
-// ===== Checkout Sheet =====
-let checkoutState = { auction: null, bidAmounts: [], method: "wallet", polling: false };
-
-function openCheckoutSheet(auction, bidAmounts){
-  checkoutState.auction = auction;
-  checkoutState.bidAmounts = bidAmounts;
-  checkoutState.method = "wallet";
-  checkoutState.polling = false;
-  renderCheckoutSheet();
-  $("#checkoutSheet").classList.remove("hidden");
-  document.body.style.overflow="hidden";
-}
-
-function closeCheckout(){
-  $("#checkoutSheet").classList.add("hidden");
-  document.body.style.overflow="";
-  checkoutState.polling = false;
-}
-
-function renderCheckoutSheet(){
-  const a = checkoutState.auction;
-  const amts = checkoutState.bidAmounts;
-  const total = a.bid_fee * amts.length;
-  const walletBal = me?.wallet_balance || 0;
-  const canWallet = walletBal >= total;
-
-  const bidSummary = amts.length === 1
-    ? `Bid #${amts[0]}`
-    : `${amts.length} bids: ${amts.slice(0,5).join(", ")}${amts.length>5?" …":""}`;
-
-  const methods = [
-    {id:"wallet", label:t("wallet_label"), icon:"💰", desc: canWallet ? t("balance",{bal:etb(walletBal)}) : t("insufficient",{total:etb(total),bal:etb(walletBal)}), disabled: !canWallet},
-    {id:"telebirr", label:t("telebirr_label"), icon:"📱", desc:"Pay with Telebirr", disabled:false},
-    {id:"cbebirr", label:t("cbebirr_label"), icon:"🏦", desc:"Pay with CBE Birr", disabled:false},
-    {id:"chapa", label:t("chapa_label"), icon:"💳", desc:"Ebirr, M-Pesa, Visa/Mastercard", disabled:false},
-  ];
-
-  $("#checkoutBody").innerHTML = `
-    <div class="space-y-3">
-      <div class="bg-slate-50 rounded-xl p-4">
-        <div class="font-semibold text-slate-900">${a.title}</div>
-        <div class="text-sm text-slate-600 mt-1">${bidSummary}</div>
-        <div class="flex justify-between mt-2 pt-2 border-t border-slate-200">
-          <span class="font-medium text-slate-700" data-i18n="total">${t("total")}</span>
-          <span class="font-bold text-emerald-700 text-lg">${etb(total)}</span>
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-2" data-i18n="payment_method">${t("payment_method")}</label>
-        <div class="space-y-2" id="methodList">
-          ${methods.map(m=>`
-            <button type="button" class="method-btn w-full text-left rounded-xl p-4 flex items-center gap-3 touch-target ${m.disabled?"disabled":""}" data-method="${m.id}" ${m.disabled?"disabled":""}>
-              <span class="text-2xl">${m.icon}</span>
-              <div class="flex-1 min-w-0">
-                <div class="font-semibold text-slate-900">${m.label}</div>
-                <div class="text-xs text-slate-500 truncate">${m.desc}</div>
-              </div>
-              <svg class="w-5 h-5 text-emerald-600 shrink-0 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-            </button>
-          `).join("")}
-        </div>
-      </div>
-
-      ${!canWallet ? `<p class="text-xs text-amber-700 bg-amber-50 rounded-lg p-3 flex items-center gap-2">⚠️ ${t("wallet_low")}</p>` : ""}
-
-      <div id="checkoutStatus" class="hidden p-3 rounded-lg text-sm"></div>
-    </div>
-  `;
-
-  // Method selection
-  $$("#methodList button").forEach(btn=>{
-    btn.onclick=()=>{
-      if(btn.disabled) return;
-      checkoutState.method = btn.dataset.method;
-      $$("#methodList button").forEach(b=>{
-        b.classList.remove("active","border-emerald-500","bg-emerald-50");
-        b.querySelector("svg")?.classList.add("hidden");
-      });
-      btn.classList.add("active","border-emerald-500","bg-emerald-50");
-      btn.querySelector("svg")?.classList.remove("hidden");
-      updatePayButton();
-    };
-  });
-
-  // Initial active state
-  const firstEnabled = methods.find(m=>!m.disabled);
-  if(firstEnabled){
-    checkoutState.method = firstEnabled.id;
-    const btn = $(`#methodList button[data-method="${firstEnabled.id}"]`);
-    btn?.classList.add("active","border-emerald-500","bg-emerald-50");
-    btn?.querySelector("svg")?.classList.remove("hidden");
-  }
-  updatePayButton();
-
-  // Pay button handler
-  $("#checkoutPayBtn").onclick = async () => {
-    if(checkoutState.method === "wallet"){
-      await executeWalletBid();
-    }else{
-      await launchChapaCheckout();
-    }
-  };
-}
-
-function updatePayButton(){
-  const btn = $("#checkoutPayBtn");
-  const a = checkoutState.auction;
-  const total = a.bid_fee * checkoutState.bidAmounts.length;
-  if(checkoutState.method === "wallet"){
-    btn.textContent = `Pay ${etb(total)} & Place Bid (Wallet)`;
-  }else{
-    const labels = {telebirr:t("telebirr_label"), cbebirr:t("cbebirr_label"), chapa:t("chapa_label")};
-    btn.textContent = `Pay ${etb(total)} via ${labels[checkoutState.method] || "Chapa"}`;
-  }
-  btn.disabled = false;
-}
-
-async function executeWalletBid(){
-  const btn = $("#checkoutPayBtn");
-  btn.disabled = true;
-  btn.textContent = "Placing bid…";
-  try{
-    const d = await api(`/api/auctions/${checkoutState.auction.id}/bid-batch`,{
-      method:"POST", body:JSON.stringify({bid_amounts: checkoutState.bidAmounts})
-    });
-    toast(`✅ ${d.placed} bid${d.placed>1?"s":""} placed!`);
-    if(me){ me.wallet_balance = d.wallet_balance; paintMe(); }
-    closeCheckout();
-    await sync();
-  }catch(e){
-    toast(e.message, true);
-    btn.disabled = false;
-    updatePayButton();
-  }
-}
-
-async function launchChapaCheckout(){
-  const btn = $("#checkoutPayBtn");
-  btn.disabled = true;
-  btn.textContent = "Opening checkout…";
-  try{
-    const d = await api(`/api/auctions/${checkoutState.auction.id}/bid-checkout`,{
-      method:"POST", body:JSON.stringify({
-        bid_amounts: checkoutState.bidAmounts,
-        payment_method: checkoutState.method
-      })
-    });
-    closeCheckout();
-    window.open(d.checkout_url, "_blank");
-    pollBidCheckout(d.tx_ref);
-  }catch(e){
-    toast(e.message, true);
-    btn.disabled = false;
-    updatePayButton();
-  }
-}
-
-async function pollBidCheckout(ref, attempts=0){
-  if(attempts > 60) return;
-  try{
-    const d = await api("/api/wallet/deposit/status/"+ref);
-    if(d.status === "confirmed"){
-      let msg = "Payment confirmed ✅";
-      if(d.bids_placed){
-        msg += ` — ${d.bids_placed} bid${d.bids_placed>1?"s":""} placed automatically`;
-      }else if(d.auction_id){
-        msg += " — Room closed or auction ended. Funds added to your wallet.";
-      }
-      toast(msg);
-      await sync();
-      return;
-    }
-    if(d.status === "failed"){
-      toast("Payment failed: " + (d.failure_reason || "Unknown error"), true);
-      return;
-    }
-  }catch(e){}
-  setTimeout(()=>pollBidCheckout(ref, attempts+1), 4000);
-}
-
-// Language toggle
-$("#langBtn").onclick = () => {
-  setLang(lang === "en" ? "am" : "en");
-};
-
-(async()=>{
-  // Initial language
-  document.documentElement.lang = lang;
-  $("#langBtn").textContent = lang==="en"?"EN":"አማርኛ";
-  
-  pills();
-  applyFilter();
-  applyTranslations();
-  try{ cfg=await api("/api/payments/config"); }catch(e){}
-  paintMe();
-  await sync();
-  connect();
-  setInterval(sync, 5000);
-})();
-</script>
-</body></html>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const TR={
+en:{howTitle:"How It Works",s1t:"Pick a number",s1d:"Choose any whole number. Lower is better.",s2t:"Be unique",s2d:"Nobody else may pick the same number.",s3t:"Lowest unique wins",s3d:"The lowest number nobody else picked wins the prize.",
+all:"All",rooms:"⚡ FLASH ROOMS",items:"🛍️ BIDDED ITEMS",winners:"🏆 Past Winners",winnersTitle:"🏆 Past Winners",limited:"LIMITED SLOTS",slotsLeft:"{n} Slots Left",roomCap:"Room Capacity",filled:"{a} / {b} filled",bidsCast:"{n} bids cast",perBid:"per bid",retail:"Retail",
+single:"Single Bid",pack:"Multi-Bid Pack",placeBid:"Place Bid",buyPack:"Buy Pack",bidsN:"{n} Bids",consec:"Consecutive",random:"Random Unique",startAt:"Start #",total:"Total",myBids:"My Bids",
+leading:"🟢 You're leading",unique:"🔵 Unique, not lowest",duplicated:"🟡 Duplicated, bid again!",closed:"🔴 Closed",won:"🏆 You won!",ended:"Ended",
+login:"Log in",loginTitle:"Log in",sendCode:"Send code",verifyGo:"Verify & continue",phonePh:"+2519XXXXXXXX",codePh:"6-digit code",logoutQ:"Log out?",
+topUp:"+ Top Up",topUpTitle:"Top up wallet",amountPh:"Amount in ETB",cont:"Continue",checkout:"Checkout",payWith:"Choose how to pay",wallet:"A BID Wallet",balance:"Balance",
+notEnough:"Your wallet balance is too low. Top up or pay directly.",direct:"Or pay directly",payWallet:"Pay {amt} with Wallet",payDirect:"Pay {amt} with {p}",cancel:"Cancel",close:"Close",
+waiting:"Waiting for your payment…",waitNote:"Finish paying in the new tab. If you close this, your bids or wallet credit are still applied once paid.",openPay:"Open payment page",
+payOk:"Payment received — your bids are in!",kept:"Payment received, but the bids could not be placed. The money is safe in your wallet.",failed:"Payment failed",timeout:"Payment not confirmed yet. If you paid, it will be applied automatically.",
+placed:"{n} bid(s) placed ✔",endedToast:"Auction ended — winning bid #{n} ({who})",soon:"soon",noRooms:"No flash rooms right now.",noItems:"No items right now.",noWinners:"No winners yet.",
+verified:"✔ Verified",winBid:"Won with unique bid #{n}",retailValue:"Retail value",more:"+{n} more",yourNums:"Your numbers",summary:"{n} bid(s) × {fee}",slotsOnly:"Only {n} slots left in this room",
+enterNum:"Enter a positive whole number",devCredit:"Wallet topped up (dev mode)",depOk:"Deposit confirmed ✔",etb:"ETB"},
+am:{howTitle:"እንዴት ይሰራል",s1t:"ቁጥር ይምረጡ",s1d:"ማንኛውንም ሙሉ ቁጥር ይምረጡ። ዝቅ ሲል ይሻላል።",s2t:"ልዩ ይሁኑ",s2d:"ሌላ ማንም ተመሳሳይ ቁጥር ሊመርጥ አይገባም።",s3t:"ዝቅተኛ ልዩ ቁጥር ያሸንፋል",s3d:"ማንም ያልመረጠው ዝቅተኛ ቁጥር ሽልማቱን ያሸንፋል።",
+all:"ሁሉም",rooms:"⚡ ፈጣን ክፍሎች",items:"🛍️ የጨረታ ዕቃዎች",winners:"🏆 ያለፉ አሸናፊዎች",winnersTitle:"🏆 ያለፉ አሸናፊዎች",limited:"ውስን ቦታ",slotsLeft:"{n} ቦታ ቀርቷል",roomCap:"የክፍሉ አቅም",filled:"{a} / {b} ተሞልቷል",bidsCast:"{n} ጨረታዎች ገብተዋል",perBid:"በአንድ ጨረታ",retail:"የችርቻሮ ዋጋ",
+single:"ነጠላ ጨረታ",pack:"የጨረታ ጥቅል",placeBid:"ጨረታ አስገባ",buyPack:"ጥቅል ግዛ",bidsN:"{n} ጨረታዎች",consec:"ተከታታይ",random:"በዘፈቀደ ልዩ",startAt:"መነሻ ቁጥር #",total:"ጠቅላላ",myBids:"የእኔ ጨረታዎች",
+leading:"🟢 እየመሩ ነው",unique:"🔵 ልዩ ነው፣ ዝቅተኛው ግን አይደለም",duplicated:"🟡 ተደግሟል፣ እንደገና ይጫረቱ!",closed:"🔴 ተዘግቷል",won:"🏆 አሸንፈዋል!",ended:"ተጠናቋል",
+login:"ግባ",loginTitle:"ይግቡ",sendCode:"ኮድ ላክ",verifyGo:"አረጋግጥና ቀጥል",phonePh:"+2519XXXXXXXX",codePh:"6 አሃዝ ኮድ",logoutQ:"መውጣት ይፈልጋሉ?",
+topUp:"+ ገንዘብ ጨምር",topUpTitle:"ዋሌት ሙላ",amountPh:"መጠን በብር",cont:"ቀጥል",checkout:"ክፍያ",payWith:"የመክፈያ መንገድ ይምረጡ",wallet:"A BID ዋሌት",balance:"ቀሪ ሂሳብ",
+notEnough:"የዋሌትዎ ቀሪ ሂሳብ በቂ አይደለም። ገንዘብ ይጨምሩ ወይም በቀጥታ ይክፈሉ።",direct:"ወይም በቀጥታ ይክፈሉ",payWallet:"{amt} በዋሌት ክፈል",payDirect:"{amt} በ{p} ክፈል",cancel:"ተወው",close:"ዝጋ",
+waiting:"ክፍያዎን በመጠበቅ ላይ…",waitNote:"ክፍያውን በአዲሱ ትር ያጠናቅቁ። ይህን ቢዘጉም ከከፈሉ ጨረታው ወይም ገንዘቡ ይመዘገባል።",openPay:"የክፍያ ገጽ ክፈት",
+payOk:"ክፍያ ተቀብለናል — ጨረታዎ ገብቷል!",kept:"ክፍያ ተቀብለናል፣ ጨረታው ግን አልገባም። ገንዘቡ በዋሌትዎ ውስጥ ደህንነቱ ተጠብቋል።",failed:"ክፍያው አልተሳካም",timeout:"ክፍያው እስካሁን አልተረጋገጠም። ከከፈሉ በራስ-ሰር ይመዘገባል።",
+placed:"{n} ጨረታ ገብቷል ✔",endedToast:"ጨረታ ተጠናቋል — አሸናፊ ቁጥር #{n} ({who})",soon:"በቅርቡ",noRooms:"አሁን ምንም ፈጣን ክፍል የለም።",noItems:"አሁን ምንም ዕቃ የለም።",noWinners:"እስካሁን አሸናፊዎች የሉም።",
+verified:"✔ የተረጋገጠ",winBid:"በልዩ ቁጥር #{n} አሸንፏል",retailValue:"የችርቻሮ ዋጋ",more:"+{n} ተጨማሪ",yourNums:"የእርስዎ ቁጥሮች",summary:"{n} ጨረታ × {fee}",slotsOnly:"በዚህ ክፍል {n} ቦታ ብቻ ቀርቷል",
+enterNum:"አዎንታዊ ሙሉ ቁጥር ያስገቡ",devCredit:"ዋሌት ተሞልቷል (የሙከራ ሁኔታ)",depOk:"ገንዘብ ተቀብለናል ✔",etb:"ብር"}};
+let lang=localStorage.getItem("lang")==="am"?"am":"en";
+const t=(k,v={})=>{let s=(TR[lang]&&TR[lang][k])??TR.en[k]??k;for(const x in v)s=s.split("{"+x+"}").join(v[x]);return s};
+const fmt=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
+const money=n=>t("etb")+" "+fmt(n);
+let token=localStorage.getItem("t")||"",me=null,cfg={providers:[]},filter="all",cards={},winners=[],ck=null,tu={amt:100,prov:null},ws,wsT,wsDelay=1000,syncing=false,syncT;
+const ST={leading:"bg-emerald-500 text-white",unique:"bg-blue-500 text-white",duplicated:"bg-amber-400 text-amber-950",closed:"bg-red-500 text-white"};
+const PROV=[["telebirr","Telebirr"],["cbe","CBE Birr"],["ebirr","Ebirr"],["chapa","Chapa"]];
+function toast(m,bad){const e=$("#toast");e.textContent=m;e.className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full text-sm text-white max-w-[90vw] text-center "+(bad?"bg-red-600":"bg-slate-900");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.add("hidden"),4000)}
+async function api(p,o={}){const h={"Content-Type":"application/json"};if(token)h.Authorization="Bearer "+token;
+ const r=await fetch(p,{...o,headers:h});const d=await r.json().catch(()=>({}));
+ if(r.status===401&&token){token="";localStorage.removeItem("t");me=null;paintMe()}
+ if(!r.ok)throw new Error(typeof d.detail==="string"?d.detail:"Something went wrong");return d}
+function applyLang(){document.documentElement.lang=lang;
+ document.querySelectorAll("[data-i18n]").forEach(e=>{e.textContent=t(e.dataset.i18n,{n:e.dataset.n})});
+ document.querySelectorAll("[data-i18n-ph]").forEach(e=>e.placeholder=t(e.dataset.i18nPh));
+ $("#lEn").className="px-2 "+(lang==="en"?"text-emerald-600 font-bold":"text-slate-500");$("#lAm").className="px-2 "+(lang==="am"?"text-emerald-600 font-bold":"text-slate-500")}
+function setLang(l){lang=l;localStorage.setItem("lang",l);applyLang();paintMe();Object.values(cards).forEach(c=>c.a&&upd(c,c.a));renderWinners();renderEmpty();if(ck)ckRender()}
+$("#lEn").onclick=()=>setLang("en");$("#lAm").onclick=()=>setLang("am");
+function drawHow(){$("#how").innerHTML=[1,2,3].map(i=>`<div class="bg-white border border-slate-200 rounded-2xl p-2 sm:p-3 flex flex-col sm:flex-row gap-1 sm:gap-3 items-start min-w-0"><div class="w-7 h-7 rounded-full bg-emerald-600 text-white text-sm font-bold flex items-center justify-center shrink-0">${i}</div><div class="min-w-0"><div class="font-bold text-xs sm:text-sm" data-i18n="s${i}t"></div><div class="text-[11px] sm:text-xs text-slate-500" data-i18n="s${i}d"></div></div></div>`).join("")}
+function drawPills(){$("#pills").innerHTML=[["all","all"],["rooms","rooms"],["items","items"],["winners","winners"]].map(([k,l])=>`<button onclick="setFilter('${k}')" data-i18n="${l}" class="shrink-0 whitespace-nowrap px-4 rounded-full text-sm font-semibold border ${filter===k?"bg-emerald-600 text-white border-emerald-600":"bg-white border-slate-200"}"></button>`).join("");applyLang()}
+function setFilter(k){filter=k;drawPills();showSections();if(k==="winners")loadWinners()}
+function showSections(){$("#secRooms").classList.toggle("hidden",filter==="items"||filter==="winners");$("#secItems").classList.toggle("hidden",filter==="rooms"||filter==="winners");$("#secWinners").classList.toggle("hidden",filter!=="winners")}
+function paintMe(){$("#bal").textContent=me?money(me.wallet_balance):money(0);const p=$("#phone");p.textContent=me?"👤 "+me.phone_number.slice(-4):t("login");
+ p.onclick=me?()=>{if(confirm(t("logoutQ"))){token="";localStorage.removeItem("t");me=null;paintMe();sync()}}:loginSheet}
+function openSheet(tk,body,foot){const T=$("#shTitle");T.dataset.i18n=tk;$("#shBody").innerHTML=body;$("#shFoot").innerHTML=foot;$("#sheet").classList.remove("hidden");document.body.classList.add("overflow-hidden");applyLang()}
+function closeSheet(){$("#sheet").classList.add("hidden");document.body.classList.remove("overflow-hidden");if(ck){if(ck.poll)ck.poll.stop=true;ck=null}}
+$("#sheet").onclick=e=>{if(e.target.id==="sheet")closeSheet()};
+function provChips(sel,fn){const on=cfg.providers||[];return `<div class="grid grid-cols-2 gap-2">${PROV.map(([k,l])=>{const ok=on.includes(k);return `<button ${ok?"":"disabled"} onclick="${fn}('${k}')" class="rounded-xl border px-3 text-sm font-semibold ${sel===k?"bg-emerald-600 text-white border-emerald-600":"bg-white border-slate-200"} ${ok?"":"opacity-40"}">${l}${ok?"":` <span class="text-[10px] font-normal">${t("soon")}</span>`}</button>`}).join("")}</div>`}
+function loginSheet(){openSheet("loginTitle",`<input id="ph" type="tel" inputmode="tel" class="w-full h-11 text-base border border-slate-300 rounded-xl px-3 mb-2" data-i18n-ph="phonePh" value="+251"><div id="otpBox" class="hidden"><input id="otp" inputmode="numeric" maxlength="6" class="w-full h-11 text-base border border-slate-300 rounded-xl px-3" data-i18n-ph="codePh"></div>`,`<button id="go" class="w-full bg-emerald-600 text-white rounded-xl font-semibold" data-i18n="sendCode"></button>`);
+ let sent=false;$("#go").onclick=async()=>{try{
+  if(!sent){await api("/api/auth/send-otp",{method:"POST",body:JSON.stringify({phone_number:$("#ph").value.trim()})});sent=true;$("#otpBox").classList.remove("hidden");$("#go").dataset.i18n="verifyGo";applyLang()}
+  else{const d=await api("/api/auth/verify-otp",{method:"POST",body:JSON.stringify({phone_number:$("#ph").value.trim(),code:$("#otp").value.trim()})});token=d.token;localStorage.setItem("t",token);closeSheet();await sync()}
+ }catch(e){toast(e.message,1)}}}
+function pollPay(ref,done,h){let n=0;const tick=async()=>{if(h.stop)return;try{const d=await api("/api/wallet/deposit/status/"+ref);if(d.status==="confirmed"||d.status==="failed")return done(d)}catch(e){}
+ if(++n>100)return done({status:"timeout"});setTimeout(tick,3000)};tick()}
+// ---- top up ----
+function topupSheet(){if(!token)return loginSheet();tu={amt:100,prov:null};renderTopup()}
+$("#topup").onclick=topupSheet;
+function tuAmt(v){tu.amt=v;renderTopup()}
+function tuProv(k){tu.prov=k;renderTopup()}
+function renderTopup(){openSheet("topUpTitle",`<div class="grid grid-cols-4 gap-2 mb-2">${(cfg.presets||[50,100,200,500]).map(v=>`<button onclick="tuAmt(${v})" class="rounded-xl border text-sm ${+tu.amt===v?"bg-emerald-600 text-white border-emerald-600":"border-slate-200"}">${v}</button>`).join("")}</div>
+ <input type="number" inputmode="numeric" min="10" value="${esc(tu.amt)}" oninput="tu.amt=this.value" class="w-full h-11 text-base border border-slate-300 rounded-xl px-3 mb-3" data-i18n-ph="amountPh">${cfg.dev_mode?"":provChips(tu.prov,"tuProv")}`,
+ `<button onclick="tuGo()" class="w-full bg-emerald-600 text-white rounded-xl font-semibold" data-i18n="cont"></button>`)}
+async function tuGo(){try{const amount=Number(tu.amt);if(cfg.dev_mode){me=await api("/api/wallet/deposit",{method:"POST",body:JSON.stringify({amount})});paintMe();closeSheet();return toast(t("devCredit"))}
+ if(!tu.prov)return;const d=await api("/api/wallet/deposit/initiate",{method:"POST",body:JSON.stringify({amount,provider:tu.prov})});closeSheet();window.open(d.checkout_url,"_blank","noopener");
+ pollPay(d.tx_ref,r=>{if(r.status==="confirmed"){toast(t("depOk"));sync()}else if(r.status==="failed")toast(t("failed"),1)},{stop:false})}catch(e){toast(e.message,1)}}
+// ---- checkout sheet (wallet or direct) ----
+function openCheckout(a,amounts){if(!token)return loginSheet();ck={a,amounts,method:"wallet",prov:null,phase:"choose",msg:"",link:null,busy:false,poll:null};ckRender()}
+function ckSelWallet(){ck.method="wallet";ck.prov=null;ckRender()}
+function ckSelProv(k){ck.method="direct";ck.prov=k;ckRender()}
+function ckRender(){if(!ck)return;const a=ck.a,n=ck.amounts.length,cost=a.bid_fee*n,bal=me?me.wallet_balance:0,low=bal<cost;
+ if(ck.phase==="choose"){
+  const nums=ck.amounts.slice(0,12).map(x=>`<span class="text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-800">#${x}</span>`).join(" ")+(n>12?` <span class="text-xs text-slate-500">${t("more",{n:n-12})}</span>`:"");
+  const wsel=ck.method==="wallet";
+  const body=`<div class="font-bold break-words">${esc(a.title)}</div><div class="text-sm text-slate-600 mb-2">${t("summary",{n,fee:money(a.bid_fee)})} = <b class="text-emerald-700">${money(cost)}</b></div>
+  <div class="text-xs text-slate-500 mb-1">${t("yourNums")}</div><div class="flex flex-wrap gap-1 mb-4">${nums}</div>
+  <div class="text-sm font-semibold mb-2">${t("payWith")}</div>
+  <button onclick="ckSelWallet()" class="w-full text-left rounded-xl border px-3 py-2 mb-2 ${wsel?"border-emerald-600 bg-emerald-50":"border-slate-200"}"><div class="font-semibold">💼 ${t("wallet")}</div><div class="text-xs text-slate-500">${t("balance")}: ${money(bal)}</div></button>
+  ${wsel&&low?`<p class="text-xs text-red-600 mb-2">${t("notEnough")}</p>`:""}
+  <div class="text-xs text-slate-500 mt-3 mb-2">${t("direct")}</div>${provChips(ck.prov,"ckSelProv")}`;
+  const pname=(PROV.find(p=>p[0]===ck.prov)||[0,""])[1];const dis=ck.busy||(wsel&&low)||(!wsel&&!ck.prov);
+  openSheet("checkout",body,`<button onclick="ckPay()" ${dis?"disabled":""} class="w-full bg-emerald-600 text-white rounded-xl font-semibold ${dis?"opacity-50":""}">${wsel?t("payWallet",{amt:money(cost)}):t("payDirect",{amt:money(cost),p:pname})}</button>`);return}
+ if(ck.phase==="waiting"){openSheet("checkout",`<div class="text-center py-6"><div class="text-4xl animate-pulse mb-3">⏳</div><div class="font-semibold">${t("waiting")}</div><p class="text-xs text-slate-500 mt-2">${t("waitNote")}</p>${ck.link?`<a href="${esc(ck.link)}" target="_blank" rel="noopener" class="inline-flex items-center justify-center min-h-[44px] mt-4 px-4 rounded-xl bg-slate-100 text-sm font-semibold">${t("openPay")}</a>`:""}</div>`,`<button onclick="closeSheet()" class="w-full bg-slate-100 rounded-xl font-semibold">${t("cancel")}</button>`);return}
+ const m={ok:["✅",t("payOk")],kept:["💼",ck.msg||t("kept")],fail:["❌",ck.msg||t("failed")],timeout:["⏳",t("timeout")]}[ck.phase];
+ openSheet("checkout",`<div class="text-center py-6"><div class="text-4xl mb-3">${m[0]}</div><div class="font-semibold break-words">${esc(m[1])}</div></div>`,`<button onclick="closeSheet()" class="w-full bg-emerald-600 text-white rounded-xl font-semibold">${t("close")}</button>`)}
+async function ckPay(){if(!ck||ck.busy)return;ck.busy=true;ckRender();const a=ck.a,body=ck.amounts;
+ try{
+  if(ck.method==="wallet"){const d=await api(`/api/auctions/${a.id}/bid-batch`,{method:"POST",body:JSON.stringify({bid_amounts:body})});
+   toast(t("placed",{n:d.placed}));if(me){me.wallet_balance=d.wallet_balance;paintMe()}closeSheet();sync()}
+  else{const d=await api(`/api/auctions/${a.id}/bid-checkout`,{method:"POST",body:JSON.stringify({bid_amounts:body,provider:ck.prov})});
+   ck.phase="waiting";ck.busy=false;ck.link=d.checkout_url;ck.poll={stop:false};ckRender();window.open(d.checkout_url,"_blank","noopener");
+   pollPay(d.tx_ref,r=>{if(!ck)return;if(r.status==="confirmed"){ck.phase=r.bids_placed?"ok":"kept";ck.msg=r.note||""}else if(r.status==="failed"){ck.phase="fail";ck.msg=r.note||""}else ck.phase="timeout";sync();ckRender()},ck.poll)}
+ }catch(e){toast(e.message,1);if(ck){ck.busy=false;ckRender()}}}
+// ---- cards ----
+function mkCard(){
+ const el=document.createElement("div");el.className="card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-w-0";
+ const st={tab:"single",pack:10,mode:"consec"};
+ el.innerHTML=`<div class="relative aspect-[4/3] bg-gradient-to-br from-emerald-50 to-slate-100 flex items-center justify-center">
+  <img data-k="img" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain p-3 hidden"><div data-k="ph" class="text-6xl select-none"></div>
+  <span data-k="tag" class="absolute top-2 left-2 text-[10px] font-bold bg-amber-400 text-amber-950 rounded-full px-2 py-1 hidden" data-i18n="limited"></span>
+  <span data-k="badge" class="absolute top-2 right-2 text-[11px] font-semibold rounded-full px-2 py-1 hidden max-w-[70%] text-center"></span></div>
+ <div class="p-4 flex flex-col gap-2 flex-1 min-w-0">
+  <div class="font-bold leading-tight break-words" data-k="title"></div><div class="text-xs text-slate-500 break-words" data-k="desc"></div>
+  <div class="text-sm"><span class="text-xs text-slate-500" data-i18n="retail"></span> <span class="line-through text-slate-400" data-k="val"></span> · <span class="font-semibold text-emerald-700" data-k="fee"></span> <span class="text-xs text-slate-500" data-i18n="perBid"></span></div>
+  <div data-k="cap"></div>
+  <div class="text-xs text-slate-600 flex justify-between gap-2"><span data-k="bids"></span><span data-k="timer" class="font-mono font-semibold"></span></div>
+  <div data-k="ctl" class="mt-1">
+   <div class="flex bg-slate-100 rounded-xl p-1 text-sm mb-2 gap-1"><button data-t="single" class="tab flex-1 rounded-lg" data-i18n="single"></button><button data-t="pack" class="tab flex-1 rounded-lg" data-i18n="pack"></button></div>
+   <div data-p="single"><div class="flex gap-2"><button class="dec w-11 h-11 shrink-0 rounded-xl bg-slate-100 font-bold text-lg">−</button><input type="number" inputmode="numeric" min="1" value="1" class="num flex-1 min-w-0 h-11 text-base text-center border border-slate-300 rounded-xl"><button class="inc w-11 h-11 shrink-0 rounded-xl bg-slate-100 font-bold text-lg">+</button></div>
+    <button class="place w-full mt-2 bg-emerald-600 text-white rounded-xl font-semibold" data-i18n="placeBid"></button></div>
+   <div data-p="pack" class="hidden space-y-2">
+    <div class="grid grid-cols-3 gap-2">${[10,50,100].map(n=>`<button data-n="${n}" data-i18n="bidsN" class="pk rounded-xl border text-sm"></button>`).join("")}</div>
+    <div class="flex gap-2 text-sm"><button data-m="consec" class="md flex-1 rounded-xl border" data-i18n="consec"></button><button data-m="random" class="md flex-1 rounded-xl border" data-i18n="random"></button></div>
+    <div data-k="startRow" class="flex items-center gap-2 text-sm"><span class="shrink-0" data-i18n="startAt"></span><input type="number" inputmode="numeric" min="1" value="1" class="start flex-1 min-w-0 h-11 text-base text-center border border-slate-300 rounded-xl"></div>
+    <div class="text-sm flex justify-between"><span data-i18n="total"></span><b data-k="total"></b></div>
+    <button class="buy w-full bg-emerald-600 text-white rounded-xl font-semibold" data-i18n="buyPack"></button></div></div>
+  <div data-k="mine" class="hidden"><button class="tgl text-xs font-semibold text-slate-600"></button><div class="list hidden flex flex-wrap gap-1 mt-1"></div></div></div>`;
+ const q=s=>el.querySelector(s),qa=s=>el.querySelectorAll(s);
+ const mode=()=>{qa(".tab").forEach(b=>b.className="tab flex-1 rounded-lg "+(b.dataset.t===st.tab?"bg-white shadow font-semibold":""));
+  qa('[data-p="single"]').forEach(x=>x.classList.toggle("hidden",st.tab!=="single"));q('[data-p="pack"]').classList.toggle("hidden",st.tab!=="pack");
+  qa(".pk").forEach(b=>b.className="pk rounded-xl border text-sm "+(+b.dataset.n===st.pack?"bg-emerald-600 text-white border-emerald-600":"border-slate-200"));
+  qa(".md").forEach(b=>b.className="md flex-1 rounded-xl border "+(b.dataset.m===st.mode?"bg-emerald-600 text-white border-emerald-600":"border-slate-200"));
+  q('[data-k="startRow"]').classList.toggle("hidden",st.mode!=="consec");q('[data-k="total"]').textContent=money(st.pack*(el.a?.bid_fee||0))};
+ el.refreshMode=mode;
+ qa(".tab").forEach(b=>b.onclick=()=>{st.tab=b.dataset.t;mode()});qa(".pk").forEach(b=>b.onclick=()=>{st.pack=+b.dataset.n;mode()});qa(".md").forEach(b=>b.onclick=()=>{st.mode=b.dataset.m;mode()});
+ q(".dec").onclick=()=>{const i=q(".num");i.value=Math.max(1,(+i.value||1)-1)};q(".inc").onclick=()=>{const i=q(".num");i.value=(+i.value||0)+1};
+ q(".tgl").onclick=()=>{q(".list").classList.toggle("hidden");el.open=!el.open;q(".tgl").textContent=(el.open?"▾ ":"▸ ")+t("myBids")};
+ q(".place").onclick=()=>{const v=Math.floor(+q(".num").value);if(!(v>=1))return toast(t("enterNum"),1);openCheckout(el.a,[v])};
+ q(".buy").onclick=()=>{const a=el.a,n=st.pack;if(a.is_room){const left=a.max_slots-a.filled_slots;if(n>left)return toast(t("slotsOnly",{n:left}),1)}
+  let amts=[];if(st.mode==="consec"){const s=Math.max(1,Math.floor(+q(".start").value||1));for(let i=0;i<n;i++)amts.push(s+i)}
+  else{const taken=new Set((a.user_bids||[]).map(b=>b.amount)),range=Math.max(n*10,200),set=new Set();let g=0;while(set.size<n&&g++<100000){const x=1+Math.floor(Math.random()*range);if(!taken.has(x))set.add(x)}amts=[...set].sort((x,y)=>x-y)}
+  openCheckout(a,amts)};
+ mode();return el}
+function upd(el,a){el.a=a;const q=k=>el.querySelector(`[data-k="${k}"]`);
+ q("title").textContent=a.title;q("desc").textContent=a.description||"";q("val").textContent=money(a.market_value);q("fee").textContent=money(a.bid_fee);
+ const img=q("img"),ph=q("ph");ph.textContent=a.is_room?"⚡":"🎁";
+ if(a.image_url){if(img.dataset.src!==a.image_url){img.dataset.src=a.image_url;img.classList.add("hidden");ph.classList.remove("hidden");
+   img.onload=()=>{img.classList.remove("hidden");ph.classList.add("hidden")};img.onerror=()=>{img.classList.add("hidden");ph.classList.remove("hidden")};img.src=a.image_url}}
+ else{img.classList.add("hidden");ph.classList.remove("hidden")}
+ q("tag").classList.toggle("hidden",!(a.is_room&&a.status==="active"));
+ const b=q("badge");let cls=null,txt="";
+ if(a.won){cls="bg-yellow-400 text-yellow-950";txt=t("won")}else if(a.user_status&&ST[a.user_status]){cls=ST[a.user_status];txt=t(a.user_status)}else if(a.status!=="active"){cls="bg-slate-700 text-white";txt=t("ended")}
+ b.classList.toggle("hidden",!cls);if(cls){b.className="absolute top-2 right-2 text-[11px] font-semibold rounded-full px-2 py-1 max-w-[70%] text-center "+cls;b.textContent=txt}
+ let cap="";if(a.is_room){const left=Math.max(0,a.max_slots-a.filled_slots),pct=Math.min(100,a.filled_slots/a.max_slots*100);
+  cap=`<div class="flex justify-between text-xs font-semibold"><span>${t("roomCap")}</span><span class="${left<=10?"text-red-600 animate-pulse":"text-emerald-700"}">${t("slotsLeft",{n:left})}</span></div><div class="h-2 bg-slate-100 rounded-full mt-1 overflow-hidden"><div class="h-full ${pct>80?"bg-red-500":"bg-emerald-500"} transition-all" style="width:${pct}%"></div></div><div class="text-[11px] text-slate-500 mt-0.5">${t("filled",{a:a.filled_slots,b:a.max_slots})}</div>`}
+ if(a.winning_bid!=null)cap+=`<div class="text-sm font-semibold text-emerald-700 mt-1">🏆 ${t("winBid",{n:a.winning_bid})}</div>`;q("cap").innerHTML=cap;
+ q("bids").textContent=a.is_room?"":t("bidsCast",{n:a.filled_slots.toLocaleString()});
+ el.ends=a.ends_at?new Date(a.ends_at).getTime():null;
+ q("ctl").classList.toggle("hidden",a.status!=="active");
+ q("mine").classList.toggle("hidden",!a.user_bids.length);el.querySelector(".tgl").textContent=(el.open?"▾ ":"▸ ")+t("myBids");
+ el.querySelector(".list").innerHTML=a.user_bids.map(x=>`<span class="text-xs px-2 py-0.5 rounded-full ${x.unique?"bg-blue-100 text-blue-800":"bg-amber-100 text-amber-800"}">${x.amount}${x.unique?" ✓":" ✗"}</span>`).join("");
+ el.refreshMode();tick(el)}
+function tick(el){const e=el.querySelector('[data-k="timer"]');if(!el.a)return;if(el.a.status!=="active"){e.textContent=t("ended");return}
+ if(!el.ends){e.textContent="";return}const s=Math.max(0,Math.floor((el.ends-Date.now())/1000)),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
+ e.textContent="⏱ "+(d?d+"d ":"")+[h,m,s%60].map(x=>String(x).padStart(2,"0")).join(":")}
+setInterval(()=>Object.values(cards).forEach(tick),1000);
+function render(list){const seen=new Set();
+ list.forEach(a=>{seen.add(a.id);let el=cards[a.id];if(!el)el=cards[a.id]=mkCard();const host=a.is_room?$("#rooms"):$("#items");if(el.parentNode!==host)host.appendChild(el);upd(el,a)});
+ Object.keys(cards).forEach(id=>{if(!seen.has(+id)){cards[id].remove();delete cards[id]}});renderEmpty(list)}
+let lastList=[];function renderEmpty(l){if(l)lastList=l;$("#roomsEmpty").classList.toggle("hidden",lastList.some(a=>a.is_room));$("#itemsEmpty").classList.toggle("hidden",lastList.some(a=>!a.is_room))}
+// ---- winners ----
+async function loadWinners(){try{winners=await api("/api/winners?limit=30")}catch(e){}renderWinners()}
+function renderWinners(){const g=$("#winnersGrid");$("#winnersEmpty").classList.toggle("hidden",winners.length>0);
+ g.innerHTML=winners.map(w=>`<article class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-w-0">
+  <div class="relative aspect-[4/3] bg-gradient-to-br from-emerald-50 to-slate-100 flex items-center justify-center"><div class="text-6xl select-none">🏆</div>${w.image_url?`<img src="${esc(w.image_url)}" alt="" loading="lazy" class="absolute inset-0 w-full h-full object-contain p-3 bg-white" onerror="this.classList.add('hidden')">`:""}
+   <span class="absolute top-2 left-2 text-[11px] font-semibold bg-emerald-600 text-white rounded-full px-2 py-1">${t("verified")}</span></div>
+  <div class="p-4 flex flex-col gap-2 min-w-0"><div class="font-bold leading-tight break-words">${esc(w.title)}</div>
+   <div class="text-sm text-slate-600">${esc(w.winner_masked)}${w.winner_city?` · 📍 ${esc(w.winner_city)}`:""}</div>
+   <div class="rounded-xl bg-emerald-50 p-3 text-sm"><div class="font-semibold text-emerald-800">${t("winBid",{n:w.winning_bid})}</div><div class="text-xs text-slate-600">${t("retailValue")}: <span class="line-through">${money(w.market_value)}</span> · ${money(w.bid_fee)} ${t("perBid")}</div></div>
+   ${w.winner_quote?`<blockquote class="text-sm italic text-slate-700 border-l-4 border-emerald-500 pl-3 break-words">“${esc(w.winner_quote)}”</blockquote>`:""}
+   ${w.winner_photo_url?`<img src="${esc(w.winner_photo_url)}" alt="" loading="lazy" class="w-full rounded-xl object-cover max-h-64" onerror="this.classList.add('hidden')">`:""}
+   ${w.winner_video_url?`<video controls playsinline preload="metadata" class="w-full rounded-xl bg-black max-h-64" src="${esc(w.winner_video_url)}"></video>`:""}</div></article>`).join("")}
+// ---- sync + realtime ----
+async function sync(){if(syncing)return;syncing=true;try{const [a,m]=await Promise.all([api("/api/auctions"),token?api("/api/me").catch(()=>null):null]);if(m)me=m;paintMe();render(a)}catch(e){}syncing=false}
+function syncSoon(){clearTimeout(syncT);syncT=setTimeout(sync,800)}
+function connect(){const p=location.protocol==="https:"?"wss":"ws";ws=new WebSocket(`${p}://${location.host}/ws`);
+ ws.onopen=()=>{wsDelay=1000;$("#dot").className="w-2.5 h-2.5 rounded-full bg-emerald-500"};
+ ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}
+  if(m.type==="slots"){const c=cards[m.auction_id];if(c&&c.a){c.a.filled_slots=m.filled_slots;upd(c,c.a)}syncSoon()}
+  else if(m.type==="auction_ended"){if(m.winning_bid!=null)toast(t("endedToast",{n:m.winning_bid,who:m.winner_masked||"—"}));syncSoon();if(filter==="winners")loadWinners()}
+  else if(m.type==="closed")syncSoon()};
+ ws.onclose=()=>{$("#dot").className="w-2.5 h-2.5 rounded-full bg-slate-300";clearTimeout(wsT);wsT=setTimeout(connect,wsDelay);wsDelay=Math.min(wsDelay*2,10000)};ws.onerror=()=>ws.close()}
+setInterval(()=>{if(ws&&ws.readyState===1)ws.send("ping")},25000);
+setInterval(()=>{if(!document.hidden)sync()},5000);
+(async()=>{drawHow();drawPills();showSections();applyLang();paintMe();try{cfg=await api("/api/payments/config")}catch(e){}await sync();connect()})();
+</script></body></html>

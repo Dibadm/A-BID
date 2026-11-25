@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A BID Admin</title><script src="https://cdn.tailwindcss.com"></script>
+<style>body{background:#F8FAFC;color:#0f172a}</style></head>
+<body class="min-h-screen pb-16">
+<div id="login" class="hidden max-w-sm mx-auto mt-24 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+ <div class="font-extrabold text-xl text-emerald-600 mb-1">A <span class="text-slate-900">BID</span> Admin</div>
+ <p class="text-sm text-slate-500 mb-4">Back-office sign in</p>
+ <input id="u" class="w-full border rounded-xl px-3 py-2 mb-2" placeholder="Username" autocomplete="username">
+ <input id="p" type="password" class="w-full border rounded-xl px-3 py-2 mb-3" placeholder="Password" autocomplete="current-password">
+ <button id="lg" class="w-full bg-emerald-600 text-white rounded-xl py-2 font-semibold">Sign in</button>
+</div>
+<div id="app" class="hidden">
+<header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200">
+ <div class="max-w-6xl mx-auto px-3 py-2 flex items-center gap-2">
+  <div class="font-extrabold text-lg text-emerald-600">A <span class="text-slate-900">BID</span> <span class="text-xs font-semibold text-slate-500">Admin</span></div>
+  <div class="flex-1"></div><span id="who" class="text-xs bg-slate-100 rounded-full px-3 py-1.5"></span>
+  <button id="out" class="text-sm font-semibold text-slate-600">Log out</button></div>
+ <nav id="tabs" class="max-w-6xl mx-auto px-3 pb-2 flex gap-2 overflow-x-auto"></nav>
+</header>
+<main id="view" class="max-w-6xl mx-auto px-3 mt-4"></main></div>
+<div id="modal" class="hidden fixed inset-0 z-40 bg-black/50 flex items-end sm:items-center justify-center p-3"><div id="mbox" class="bg-white rounded-3xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto"></div></div>
+<div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden px-4 py-2 rounded-full text-sm text-white"></div>
+<script>
+const $=s=>document.querySelector(s);
+let tok=sessionStorage.getItem("at")||"",who=JSON.parse(sessionStorage.getItem("aw")||"null"),tab="Dashboard";
+const TABS=["Dashboard","Auctions","Prizes","Commissions","Users","Payments","Audit"];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const etb=n=>"ETB "+Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
+function toast(m,bad){const t=$("#toast");t.textContent=m;t.className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full text-sm text-white "+(bad?"bg-red-600":"bg-slate-900");setTimeout(()=>t.classList.add("hidden"),3500)}
+async function api(p,o={}){const h={"Content-Type":"application/json"};if(tok)h.Authorization="Bearer "+tok;
+ const r=await fetch("/api/admin"+p,{...o,headers:h});const d=await r.json().catch(()=>({}));
+ if(r.status===401&&tok){logout();throw new Error("Session expired")}
+ if(!r.ok)throw new Error(typeof d.detail==="string"?d.detail:"Request failed");return d}
+const post=(p,b)=>api(p,{method:"POST",body:JSON.stringify(b||{})});
+function logout(){tok="";who=null;sessionStorage.clear();boot()}
+$("#out").onclick=logout;
+$("#lg").onclick=async()=>{try{const d=await post("/login",{username:$("#u").value.trim(),password:$("#p").value});
+ tok=d.token;who={username:d.username,role:d.role};sessionStorage.setItem("at",tok);sessionStorage.setItem("aw",JSON.stringify(who));boot()}catch(e){toast(e.message,1)}};
+$("#p").onkeydown=e=>{if(e.key==="Enter")$("#lg").click()};
+const card=(t,v,sub)=>`<div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm"><div class="text-xs text-slate-500">${t}</div><div class="text-xl font-bold text-emerald-700 mt-1">${v}</div>${sub?`<div class="text-[11px] text-slate-400">${sub}</div>`:""}</div>`;
+const table=(cols,rows,empty="Nothing here yet.")=>rows.length?`<div class="bg-white rounded-2xl border border-slate-200 overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500 text-xs"><tr>${cols.map(c=>`<th class="text-left px-3 py-2 whitespace-nowrap">${c}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr class="border-t border-slate-100">${r.map(c=>`<td class="px-3 py-2 align-top">${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<p class="text-sm text-slate-500">${empty}</p>`;
+const btn=(label,fn,cls="bg-slate-100")=>`<button onclick="${fn}" class="${cls} rounded-lg px-2.5 py-1 text-xs font-semibold mr-1 mb-1">${label}</button>`;
+const pill=(t,c)=>`<span class="text-[11px] rounded-full px-2 py-0.5 font-semibold ${c}">${esc(t)}</span>`;
+const stc={active:"bg-emerald-100 text-emerald-800",ended:"bg-slate-200 text-slate-700",cancelled:"bg-red-100 text-red-700",calculating:"bg-amber-100 text-amber-800",pending:"bg-amber-100 text-amber-800",confirmed:"bg-emerald-100 text-emerald-800",failed:"bg-red-100 text-red-700",contacted:"bg-blue-100 text-blue-800",delivered:"bg-emerald-100 text-emerald-800"};
+const sp=s=>pill(s,stc[s]||"bg-slate-100");
+async function act(fn,msg){try{const d=await fn();toast(msg||"Done");go(tab);return d}catch(e){toast(e.message,1)}}
+function tabs(){$("#tabs").innerHTML=TABS.map(t=>`<button onclick="go('${t}')" class="px-4 py-1.5 rounded-full text-sm font-semibold border whitespace-nowrap ${t===tab?"bg-emerald-600 text-white border-emerald-600":"bg-white border-slate-200"}">${t}</button>`).join("")}
+async function go(t){tab=t;tabs();const v=$("#view");try{v.innerHTML=await VIEWS[t]()}catch(e){v.innerHTML=`<p class="text-red-600 text-sm">${esc(e.message)}</p>`}}
+const VIEWS={
+async Dashboard(){const s=await api("/stats");return `<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+ ${card("Bid revenue",etb(s.bid_revenue),s.bids_total.toLocaleString()+" bids")}${card("Platform fees",etb(s.platform_fees))}${card("Partner commissions",etb(s.partner_share))}${card("Deposits",etb(s.deposits))}
+ ${card("Wallet liability",etb(s.wallet_liability),"owed to players")}${card("Users",s.users)}${card("Live rooms / items",s.active_rooms+" / "+s.active_items)}${card("To action",s.pending_prizes+" prizes · "+s.pending_payments+" payments")}</div>`},
+async Auctions(){const l=await api("/auctions");
+ const form=`<div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm"><div class="font-bold mb-2">Create auction</div>
+ <div class="grid md:grid-cols-4 gap-2 text-sm">
+ <input id="a_t" class="border rounded-xl px-3 py-2 md:col-span-2" placeholder="Title"><input id="a_d" class="border rounded-xl px-3 py-2 md:col-span-2" placeholder="Description">
+ <input id="a_v" type="number" class="border rounded-xl px-3 py-2" placeholder="Retail value (ETB)"><input id="a_f" type="number" class="border rounded-xl px-3 py-2" placeholder="Bid fee (ETB)">
+ <input id="a_s" type="number" class="border rounded-xl px-3 py-2" placeholder="Max slots">
+ <select id="a_r" class="border rounded-xl px-3 py-2"><option value="1">⚡ Special Room (closes when full)</option><option value="0">🛍️ Open Item (timer)</option></select>
+ <div class="md:col-span-2 flex items-center gap-2">Ends at <input id="a_e" type="datetime-local" class="border rounded-xl px-3 py-2 flex-1"></div>
+ <button onclick="mk()" class="bg-emerald-600 text-white rounded-xl py-2 font-semibold md:col-span-2">Create</button></div>
+ <p class="text-[11px] text-slate-400 mt-1">End time is required for open items and optional for rooms.</p></div>`;
+ return form+table(["ID","Title","Type","Fee","Slots","Status","Winning bid","Ends","Actions"],l.map(a=>[a.id,esc(a.title),a.is_room?pill("⚡ Room","bg-amber-100 text-amber-800"):pill("🛍️ Open","bg-teal-100 text-teal-800"),etb(a.bid_fee),`${a.filled_slots}/${a.max_slots}`,sp(a.status),a.lowest_unique_bid??"—",a.ends_at?new Date(a.ends_at).toLocaleString():"—",
+ btn("Media",`md(${a.id})`)+(a.status==="active"?btn("Switch to "+(a.is_room?"Open":"Room"),`tg(${a.id})`)+btn("Close now",`cl(${a.id})`,"bg-amber-100")+btn("Cancel + refund",`cn(${a.id})`,"bg-red-100"):(a.status==="cancelled"||(a.status==="ended"&&!a.winner_id))?btn("Refund bidders",`rf(${a.id})`,"bg-red-100"):"")]))},
+async Prizes(){const l=await api("/prizes");return table(["Auction","Winner","Winning bid","Value","Fulfillment","Update"],l.map(a=>[esc(a.title),esc(a.winner_phone),a.lowest_unique_bid,etb(a.market_value),sp(a.prize_status),
+ ["pending","contacted","delivered"].map(s=>btn(s,`pz(${a.id},'${s}')`,s===a.prize_status?"bg-emerald-600 text-white":"bg-slate-100")).join("")+btn("Media",`md(${a.id})`)]),"No winners yet.")},
+async Commissions(){const [l,s]=await Promise.all([api("/commissions"),api("/stats")]);
+ return `<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">${card("Platform fees",etb(s.platform_fees))}${card("Partner commissions",etb(s.partner_share))}${card("Gross bid revenue",etb(s.bid_revenue))}</div>`+
+ table(["Auction","Bids","Platform fee","Partner share"],l.map(c=>[`#${c.auction_id} ${esc(c.title)}`,c.bids.toLocaleString(),etb(c.platform_fee),etb(c.partner_share)]),"No commissions recorded.")},
+async Users(){const q=$("#uq")?.value||"";const l=await api("/users?q="+encodeURIComponent(q));
+ return `<div class="flex gap-2 mb-3"><input id="uq" value="${esc(q)}" class="border rounded-xl px-3 py-2 text-sm flex-1" placeholder="Search phone, e.g. +2519"><button onclick="go('Users')" class="bg-emerald-600 text-white rounded-xl px-4 text-sm font-semibold">Search</button></div>`+
+ table(["ID","Phone","Wallet","Status","Actions"],l.map(u=>[u.id,esc(u.phone_number),etb(u.wallet_balance),u.blocked?pill("Blocked","bg-red-100 text-red-700"):pill("Active","bg-emerald-100 text-emerald-800"),
+ btn("Adjust wallet",`aj(${u.id})`)+btn(u.blocked?"Unblock":"Block",`bl(${u.id},${!u.blocked})`,u.blocked?"bg-emerald-100":"bg-red-100")]))},
+async Payments(){const l=await api("/payments");return table(["ID","Phone","Provider","Reference","Amount","Status","Actions"],l.map(p=>[p.id,esc(p.phone),esc(p.provider),`<span class="font-mono text-xs">${esc(p.tx_ref)}</span>`,etb(p.amount),sp(p.status)+(p.failure_reason?`<div class="text-[11px] text-slate-400">${esc(p.failure_reason)}</div>`:""),
+ p.status!=="confirmed"?btn("Approve",`pa(${p.id})`,"bg-emerald-100")+(p.status==="pending"?btn("Reject",`pr(${p.id})`,"bg-red-100")+btn("Recheck",`pc(${p.id})`):""):""]))},
+async Audit(){const l=await api("/audit");return table(["When","Admin","Action","Detail","IP"],l.map(a=>[new Date(a.at).toLocaleString(),esc(a.admin),esc(a.action),esc(a.detail),esc(a.ip)]))}};
+const mk=()=>act(()=>{const e=$("#a_e").value;return post("/auctions",{title:$("#a_t").value,description:$("#a_d").value,market_value:$("#a_v").value,bid_fee:$("#a_f").value,max_slots:+$("#a_s").value,is_room:$("#a_r").value==="1",ends_at:e?new Date(e).toISOString():null})},"Auction created");
+const tg=id=>act(()=>post(`/auctions/${id}/toggle-room`),"Type switched");
+const cl=id=>confirm("Close and resolve this auction now?")&&act(()=>post(`/auctions/${id}/close`),"Auction closed");
+const cn=id=>confirm("Cancel and refund ALL bidders?")&&act(()=>post(`/auctions/${id}/cancel`),"Cancelled and refunded");
+const rf=id=>confirm("Refund all bidders of this auction?")&&act(()=>post(`/auctions/${id}/refund`),"Refunded");
+const pz=(id,s)=>act(()=>post(`/auctions/${id}/prize`,{status:s}),"Prize updated");
+const bl=(id,b)=>{const r=b?prompt("Reason for blocking?")||"":"";if(b&&!r)return;act(()=>post(`/users/${id}/block`,{blocked:b,reason:r}),b?"User blocked":"User unblocked")};
+const aj=id=>{const a=prompt("Amount in ETB (negative to deduct):");if(!a)return;const r=prompt("Reason (required):");if(!r)return;act(()=>post(`/users/${id}/adjust`,{amount:a,reason:r}),"Wallet adjusted")};
+const pa=id=>confirm("Credit this deposit to the user's wallet?")&&act(()=>post(`/payments/${id}/approve`),"Payment approved");
+const pr=id=>act(()=>post(`/payments/${id}/reject`),"Payment rejected");
+const pc=id=>act(async()=>{const d=await post(`/payments/${id}/recheck`);toast(d.status+": "+d.note);return d},"Rechecked");
+const MF=[["image_url","Product photo","image/*"],["winner_photo_url","Winner photo","image/*"],["winner_video_url","Winner video","video/*"]];
+async function md(id){const l=await api("/auctions");const a=l.find(x=>x.id===id);if(!a)return;
+ $("#mbox").innerHTML=`<h3 class="font-bold text-lg mb-3">Media: ${esc(a.title)}</h3>`+MF.map(([k,lab,acc])=>`<div class="mb-3"><div class="text-xs text-slate-500 mb-1">${lab}</div><input id="m_${k}" value="${esc(a[k]||"")}" class="w-full border rounded-xl px-3 py-2 text-sm mb-1" placeholder="/uploads/... or https://..."><input type="file" accept="${acc}.jpg,.png,.webp,.mp4,.webm" onchange="up(this,'m_${k}')" class="text-xs"></div>`).join("")+
+ `<div class="mb-3"><div class="text-xs text-slate-500 mb-1">Winner quote</div><textarea id="m_winner_quote" maxlength="500" class="w-full border rounded-xl px-3 py-2 text-sm">${esc(a.winner_quote||"")}</textarea></div>
+ <div class="mb-3"><div class="text-xs text-slate-500 mb-1">Winner city</div><input id="m_winner_city" maxlength="80" value="${esc(a.winner_city||"")}" class="w-full border rounded-xl px-3 py-2 text-sm"></div>
+ <div class="flex gap-2"><button onclick="saveMedia(${id})" class="flex-1 bg-emerald-600 text-white rounded-xl py-2 font-semibold">Save</button><button onclick="$('#modal').classList.add('hidden')" class="flex-1 bg-slate-100 rounded-xl py-2 font-semibold">Close</button></div>`;
+ $("#modal").classList.remove("hidden")}
+async function up(inp,target){const file=inp.files[0];if(!file)return;if(file.size>15*1024*1024)return toast("Max file size is 15 MB",1);
+ const fd=new FormData();fd.append("file",file);toast("Uploading…");
+ try{const r=await fetch("/api/admin/upload",{method:"POST",headers:{Authorization:"Bearer "+tok},body:fd});const d=await r.json();
+  if(!r.ok)throw new Error(typeof d.detail==="string"?d.detail:"Upload failed");$("#"+target).value=d.url;toast("Uploaded — press Save to attach")}catch(e){toast(e.message,1)}}
+async function saveMedia(id){const b={};["image_url","winner_photo_url","winner_video_url","winner_quote","winner_city"].forEach(k=>b[k]=$("#m_"+k).value);
+ try{await post(`/prizes/${id}/media`,b);$("#modal").classList.add("hidden");toast("Media saved");go(tab)}catch(e){toast(e.message,1)}}
+function boot(){const ok=!!tok&&!!who;$("#login").classList.toggle("hidden",ok);$("#app").classList.toggle("hidden",!ok);if(ok){$("#who").textContent=who.username+" · "+who.role;go(tab)}}
+boot();
+</script></body></html>

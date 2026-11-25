@@ -12,7 +12,8 @@ def _url() -> str:
     return u.replace("sslmode=require", "ssl=require")
 
 
-engine = create_async_engine(_url(), pool_size=20, max_overflow=20, pool_pre_ping=True)
+_pool = int(os.getenv("DB_POOL_SIZE", "10"))
+engine = create_async_engine(_url(), pool_size=_pool, max_overflow=_pool, pool_pre_ping=True, pool_recycle=300)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
@@ -47,7 +48,6 @@ class Auction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
-    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     market_value = mapped_column(Numeric(12, 2))
     bid_fee = mapped_column(Numeric(10, 2))
     max_slots: Mapped[int] = mapped_column(Integer)
@@ -59,6 +59,7 @@ class Auction(Base):
     prize_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|contacted|delivered
     ends_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     winner_photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     winner_video_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     winner_quote: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -84,6 +85,7 @@ class WalletTransaction(Base):
     balance_after = mapped_column(Numeric(12, 2))
     reference: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class PaymentIntent(Base):
@@ -94,10 +96,10 @@ class PaymentIntent(Base):
     tx_ref: Mapped[str] = mapped_column(String(100), unique=True)
     amount = mapped_column(Numeric(12, 2))
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|confirmed|failed
-    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    auction_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
-    pending_bids_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)  # also holds the "bids not placed" note
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+    auction_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pending_bids_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class PartnerCommission(Base):
@@ -131,15 +133,28 @@ class AdminAuditLog(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
 
 
+# Every statement is idempotent, so a live database upgrades in place without data loss.
+MIGRATIONS = [
+    "ALTER TABLE auctions ADD COLUMN IF NOT EXISTS is_room BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE auctions ADD COLUMN IF NOT EXISTS image_url TEXT",
+    "ALTER TABLE auctions ADD COLUMN IF NOT EXISTS winner_photo_url TEXT",
+    "ALTER TABLE auctions ADD COLUMN IF NOT EXISTS winner_video_url TEXT",
+    "ALTER TABLE auctions ADD COLUMN IF NOT EXISTS winner_quote TEXT",
+    "ALTER TABLE auctions ADD COLUMN IF NOT EXISTS winner_city VARCHAR(80)",
+    "ALTER TABLE payment_intents ADD COLUMN IF NOT EXISTS auction_id INTEGER",
+    "ALTER TABLE payment_intents ADD COLUMN IF NOT EXISTS pending_bids_json TEXT",
+    "ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS note TEXT",
+    "CREATE INDEX IF NOT EXISTS ix_bid_ledger_auction_amount ON bid_ledger (auction_id, bid_amount)",
+    """DO $$ BEGIN
+         ALTER TABLE users ADD CONSTRAINT ck_users_wallet_nonneg CHECK (wallet_balance >= 0) NOT VALID;
+       EXCEPTION WHEN duplicate_object THEN NULL;
+       END $$""",
+]
+
+
 async def init_models():
     async with engine.begin() as conn:
+        await conn.execute(text("SELECT pg_advisory_xact_lock(727201)"))  # serialises multi-worker startup
         await conn.run_sync(Base.metadata.create_all)
-        await conn.execute(text("ALTER TABLE auctions ADD COLUMN IF NOT EXISTS is_room BOOLEAN NOT NULL DEFAULT FALSE;"))
-        await conn.execute(text("ALTER TABLE auctions ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);"))
-        await conn.execute(text("ALTER TABLE auctions ADD COLUMN IF NOT EXISTS winner_photo_url TEXT;"))
-        await conn.execute(text("ALTER TABLE auctions ADD COLUMN IF NOT EXISTS winner_video_url TEXT;"))
-        await conn.execute(text("ALTER TABLE auctions ADD COLUMN IF NOT EXISTS winner_quote TEXT;"))
-        await conn.execute(text("ALTER TABLE auctions ADD COLUMN IF NOT EXISTS winner_city VARCHAR(80);"))
-        await conn.execute(text("ALTER TABLE payment_intents ADD COLUMN IF NOT EXISTS auction_id INTEGER;"))
-        await conn.execute(text("ALTER TABLE payment_intents ADD COLUMN IF NOT EXISTS pending_bids_json TEXT;"))
-        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_payment_intents_auction_id ON payment_intents (auction_id);"))
+        for stmt in MIGRATIONS:
+            await conn.execute(text(stmt))

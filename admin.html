@@ -1,463 +1,104 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A BID Admin</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  body{background:#F8FAFC;color:#0f172a}
-  .card{animation:fadeIn .3s ease}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
-  .overflow-x-hidden{overflow-x:hidden}
-  .input-base{font-size:16px !important}
-  .touch-target{min-height:44px}
-  .pill-scroll{scrollbar-width:none;-ms-overflow-style:none}
-  .pill-scroll::-webkit-scrollbar{display:none}
-  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
-  .tab-btn{padding:10px 14px;border-radius:8px;font-weight:600;font-size:14px;white-space:nowrap}
-  .tab-btn.active{background:#10b981;color:#fff}
-  .tab-btn:not(.active){background:#fff;border:1px solid #e2e8f0;color:#475569}
-  .auction-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:8px}
-  .auction-card .row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9}
-  .auction-card .row:last-child{border-bottom:none}
-  .auction-card .label{font-size:12px;color:#64748b}
-  .auction-card .value{font-weight:600;color:#0f172a}
-  .btn-group{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-  .img-preview{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#f0fdf4}
-  .img-preview-placeholder{width:100%;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#f0fdf4;border-radius:8px;color:#166534;font-size:2rem}
-</style>
-</head>
-<body class="min-h-screen pb-20 overflow-x-hidden">
-<header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
-  <div class="max-w-7xl mx-auto px-3 py-2 flex items-center gap-2 flex-wrap">
-    <div class="font-extrabold text-lg text-emerald-600 flex items-center gap-1">
-      A<span class="text-slate-900"> BID</span> <span class="text-xs font-normal text-slate-500">Admin</span>
-    </div>
-    <div class="flex-1 min-w-0"></div>
-    <span id="roleBadge" class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 shrink-0"></span>
-    <button id="logoutBtn" class="text-sm font-semibold bg-red-600 text-white rounded-full px-3 py-1.5 touch-target shrink-0 whitespace-nowrap">Logout</button>
-  </div>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A BID Admin</title><script src="https://cdn.tailwindcss.com"></script>
+<style>body{background:#F8FAFC;color:#0f172a}</style></head>
+<body class="min-h-screen pb-16">
+<div id="login" class="hidden max-w-sm mx-auto mt-24 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+ <div class="font-extrabold text-xl text-emerald-600 mb-1">A <span class="text-slate-900">BID</span> Admin</div>
+ <p class="text-sm text-slate-500 mb-4">Back-office sign in</p>
+ <input id="u" class="w-full border rounded-xl px-3 py-2 mb-2" placeholder="Username" autocomplete="username">
+ <input id="p" type="password" class="w-full border rounded-xl px-3 py-2 mb-3" placeholder="Password" autocomplete="current-password">
+ <button id="lg" class="w-full bg-emerald-600 text-white rounded-xl py-2 font-semibold">Sign in</button>
+</div>
+<div id="app" class="hidden">
+<header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200">
+ <div class="max-w-6xl mx-auto px-3 py-2 flex items-center gap-2">
+  <div class="font-extrabold text-lg text-emerald-600">A <span class="text-slate-900">BID</span> <span class="text-xs font-semibold text-slate-500">Admin</span></div>
+  <div class="flex-1"></div><span id="who" class="text-xs bg-slate-100 rounded-full px-3 py-1.5"></span>
+  <button id="out" class="text-sm font-semibold text-slate-600">Log out</button></div>
+ <nav id="tabs" class="max-w-6xl mx-auto px-3 pb-2 flex gap-2 overflow-x-auto"></nav>
 </header>
-<main class="max-w-7xl mx-auto px-3 pb-4" id="mainContent" style="display:none;">
-  <!-- Tabs -->
-  <div class="flex gap-2 my-4 pill-scroll overflow-x-auto pb-2" id="tabs" role="tablist" aria-label="Admin sections"></div>
-
-  <!-- Dashboard -->
-  <section id="secDashboard" class="space-y-4">
-    <h2 class="font-bold text-lg">Dashboard</h2>
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Bid Revenue</div><div id="statRevenue" class="text-2xl font-bold text-emerald-700">—</div></div>
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Total Bids</div><div id="statBids" class="text-2xl font-bold text-blue-700">—</div></div>
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Platform Fees</div><div id="statPlatform" class="text-2xl font-bold text-emerald-700">—</div></div>
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Partner Shares</div><div id="statPartner" class="text-2xl font-bold text-amber-700">—</div></div>
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card sm:col-span-2"><div class="text-xs text-slate-500">Total Deposits</div><div id="statDeposits" class="text-2xl font-bold text-blue-700">—</div></div>
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card sm:col-span-2"><div class="text-xs text-slate-500">Wallet Liability</div><div id="statLiability" class="text-2xl font-bold text-red-700">—</div></div>
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Flash Rooms</div><div id="statRooms" class="text-2xl font-bold text-emerald-700">—</div></div>
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Bidded Items</div><div id="statItems" class="text-2xl font-bold text-blue-700">—</div></div>
-      <div class="bg-white rounded-xl p-4 border border-slate-200 card"><div class="text-xs text-slate-500">Pending Prizes</div><div id="statPrizes" class="text-2xl font-bold text-amber-700">—</div></div>
-    </div>
-  </section>
-
-  <!-- Auctions -->
-  <section id="secAuctions" class="hidden space-y-4">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-      <h2 class="font-bold text-lg">Auctions</h2>
-      <button id="newAuctionBtn" class="bg-emerald-600 text-white rounded-xl px-4 py-2.5 font-semibold touch-target shrink-0">+ Add Item / Room</button>
-    </div>
-    <div id="auctionsList" class="space-y-2"></div>
-  </section>
-
-  <!-- Prizes -->
-  <section id="secPrizes" class="hidden space-y-4">
-    <h2 class="font-bold text-lg">Prizes</h2>
-    <div id="prizesList" class="space-y-2"></div>
-  </section>
-
-  <!-- Users -->
-  <section id="secUsers" class="hidden space-y-4">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-      <h2 class="font-bold text-lg">Users</h2>
-      <input id="userSearch" type="search" placeholder="Search phone..." class="input-base border border-slate-300 rounded-xl px-4 py-2.5 touch-target w-full sm:w-64" aria-label="Search users">
-    </div>
-    <div id="usersList" class="space-y-2"></div>
-  </section>
-
-  <!-- Payments -->
-  <section id="secPayments" class="hidden space-y-4">
-    <h2 class="font-bold text-lg">Payments</h2>
-    <div id="paymentsList" class="space-y-2"></div>
-  </section>
-</main>
-
-<!-- Login Modal (shown when not authenticated) -->
-<div id="loginModal" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="login-title">
-  <div class="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
-    <h3 id="login-title" class="font-bold text-xl mb-6 text-center">A BID Admin Login</h3>
-    <input id="auser" type="text" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Username" autocomplete="username">
-    <input id="apass" type="password" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3 mb-3" placeholder="Password" autocomplete="current-password">
-    <button id="alogin" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target">Sign In</button>
-    <p id="loginError" class="text-center text-sm text-red-600 mt-3 hidden"></p>
-  </div>
-</div>
-
-<!-- Action Modal -->
-<div id="modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-  <div id="mbox" class="bg-white rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
-</div>
-
-<!-- Toast -->
-<div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-60 hidden px-4 py-2 rounded-full text-sm text-white"></div>
-
+<main id="view" class="max-w-6xl mx-auto px-3 mt-4"></main></div>
+<div id="modal" class="hidden fixed inset-0 z-40 bg-black/50 flex items-end sm:items-center justify-center p-3"><div id="mbox" class="bg-white rounded-3xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto"></div></div>
+<div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden px-4 py-2 rounded-full text-sm text-white"></div>
 <script>
 const $=s=>document.querySelector(s);
-const $$=s=>document.querySelectorAll(s);
-let token=localStorage.getItem("at")||"", adminUser=null;
-const TABS=[
-  {id:"dashboard",label:"Dashboard",icon:"📊",perm:"stats"},
-  {id:"auctions",label:"Auctions",icon:"⚡",perm:"auctions"},
-  {id:"prizes",label:"Prizes",icon:"🏆",perm:"prizes"},
-  {id:"users",label:"Users",icon:"👥",perm:"users"},
-  {id:"payments",label:"Payments",icon:"💳",perm:"payments"},
-];
-
-function toast(msg,bad=false){
-  const t=$("#toast");
-  t.textContent=msg;
-  t.className="fixed bottom-4 left-1/2 -translate-x-1/2 z-60 px-4 py-2 rounded-full text-sm text-white "+(bad?"bg-red-600":"bg-slate-900");
-  t.classList.remove("hidden");
-  setTimeout(()=>t.classList.add("hidden"),3500);
-}
-
-async function api(path,opts={}){
-  const h={"Content-Type":"application/json"};
-  if(token) h.Authorization="Bearer "+token;
-  const res=await fetch(path,{...opts,headers:h});
-  const d=await res.json().catch(()=>({}));
-  if(res.status===401&&token){ token=""; localStorage.removeItem("at"); adminUser=null; showLogin(); }
-  if(!res.ok) throw new Error(typeof d.detail==="string"?d.detail:"Request failed");
-  return d;
-}
-
-const etb=n=>"ETB "+Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
-
-function modal(html){
-  $("#mbox").innerHTML=html;
-  $("#modal").classList.remove("hidden");
-  document.body.style.overflow="hidden";
-}
-function closeModal(){
-  $("#modal").classList.add("hidden");
-  document.body.style.overflow="";
-}
-$("#modal").onclick=e=>{ if(e.target.id==="modal") closeModal(); };
-
-function showLogin(){
-  $("#loginModal").classList.remove("hidden");
-  $("#mainContent").style.display="none";
-  $("#loginError").classList.add("hidden");
-  $("#auser").value="";
-  $("#apass").value="";
-  $("#auser").focus();
-}
-function hideLogin(){
-  $("#loginModal").classList.add("hidden");
-  $("#mainContent").style.display="block";
-}
-
-function paintHeader(){
-  $("#roleBadge").textContent=adminUser?.role||"Admin";
-  $("#roleBadge").classList.remove("hidden");
-}
-
-$("#logoutBtn").onclick=()=>{ token=""; localStorage.removeItem("at"); adminUser=null; showLogin(); };
-$("#alogin").onclick=async()=>{
-  $("#loginError").classList.add("hidden");
-  try{
-    const d=await api("/api/admin/login",{method:"POST",body:JSON.stringify({username:$("#auser").value,password:$("#apass").value})});
-    token=d.token; adminUser={username:d.username,role:d.role}; localStorage.setItem("at",token); hideLogin(); paintHeader(); initTabs(); loadAll();
-  }catch(e){ $("#loginError").textContent=e.message; $("#loginError").classList.remove("hidden"); }
-};
-
-function tabsHTML(){
-  return TABS.map(t=>`<button role="tab" data-tab="${t.id}" class="tab-btn ${t.id==="dashboard"?"active":""}" aria-selected="${t.id==="dashboard"}">${t.icon} ${t.label}</button>`).join("");
-}
-function initTabs(){
-  $("#tabs").innerHTML=tabsHTML();
-  $$("#tabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
-}
-function switchTab(id){
-  TABS.forEach(t=>{
-    const sec=$("#sec"+t.id.charAt(0).toUpperCase()+t.id.slice(1));
-    const btn=$("#tabs button[data-tab='"+t.id+"']");
-    if(t.id===id){ sec?.classList.remove("hidden"); btn?.classList.add("active"); btn?.setAttribute("aria-selected","true"); }
-    else{ sec?.classList.add("hidden"); btn?.classList.remove("active"); btn?.setAttribute("aria-selected","false"); }
-  });
-}
-
-async function loadAll(){
-  await Promise.all([loadStats(), loadAuctions(), loadPrizes(), loadUsers(), loadPayments()]);
-}
-
-async function loadStats(){
-  try{
-    const d=await api("/api/admin/stats");
-    $("#statRevenue").textContent=etb(d.total_bid_revenue);
-    $("#statBids").textContent=d.total_bids_cast.toLocaleString();
-    $("#statPlatform").textContent=etb(d.platform_fees_collected);
-    $("#statPartner").textContent=etb(d.partner_shares_accrued);
-    $("#statDeposits").textContent=etb(d.total_deposits);
-    $("#statLiability").textContent=etb(d.wallet_liability);
-    $("#statRooms").textContent=d.active_flash_rooms;
-    $("#statItems").textContent=d.active_bidded_items;
-    $("#statPrizes").textContent=d.pending_prizes;
-  }catch(e){ toast(e.message,true); }
-}
-
-async function loadAuctions(){
-  try{
-    const d=await api("/api/admin/auctions?limit=100");
-    const list=$("#auctionsList");
-    list.innerHTML=d.map(a=>`
-      <div class="auction-card">
-        <div class="flex items-center gap-3 mb-2">
-          ${a.image_url?`<img src="${a.image_url}" class="img-preview w-16 h-16" alt="">`:`<div class="img-preview-placeholder w-16 h-16">📦</div>`}
-          <div class="flex-1 min-w-0">
-            <div class="font-semibold truncate">${a.title}</div>
-            <div class="text-xs text-slate-500 truncate">${a.description||"—"}</div>
-          </div>
-        </div>
-        <div class="row"><span class="label">ID</span><span class="value font-mono text-xs">${a.id}</span></div>
-        <div class="row"><span class="label">Type</span><span class="value"><span class="badge ${a.is_room?"bg-emerald-100 text-emerald-700":"bg-blue-100 text-blue-700"}">${a.is_room?"⚡ Flash Room":"🛍️ Open Item"}</span></span></div>
-        <div class="row"><span class="label">Status</span><span class="value"><span class="badge ${a.status==="active"?"bg-emerald-100 text-emerald-700":a.status==="ended"?"bg-slate-100 text-slate-700":"bg-red-100 text-red-700"}">${a.status}</span></span></div>
-        <div class="row"><span class="label">Bid Fee</span><span class="value">${etb(a.bid_fee)}</span></div>
-        <div class="row"><span class="label">Slots</span><span class="value">${a.filled_slots}/${a.max_slots}</span></div>
-        <div class="row"><span class="label">Ends</span><span class="value text-xs text-slate-500">${a.ends_at?new Date(a.ends_at).toLocaleString():"—"}</span></div>
-        <div class="row"><span class="label">Market Value</span><span class="value">${etb(a.market_value)}</span></div>
-        <div class="btn-group">
-          <button class="toggleRoom px-3 py-2 text-xs rounded bg-${a.is_room?"blue":"emerald"}-100 text-${a.is_room?"blue":"emerald"}-700 touch-target" data-id="${a.id}" data-room="${a.is_room}">${a.is_room?"→ Open Item":"→ Flash Room"}</button>
-          ${a.status==="active"?`<button class="closeAuc px-3 py-2 text-xs rounded bg-amber-100 text-amber-700 touch-target" data-id="${a.id}">Close</button>`:""}
-          <button class="refundAuc px-3 py-2 text-xs rounded bg-red-100 text-red-700 touch-target" data-id="${a.id}">Refund</button>
-        </div>
-      </div>
-    `).join("");
-    $$(".toggleRoom").forEach(b=>b.onclick=()=>toggleRoom(b.dataset.id,b.dataset.room==="true"));
-    $$(".closeAuc").forEach(b=>b.onclick=()=>closeAuction(b.dataset.id));
-    $$(".refundAuc").forEach(b=>b.onclick=()=>refundAuction(b.dataset.id));
-  }catch(e){ toast(e.message,true); }
-}
-
-async function toggleRoom(id,isRoom){
-  try{ await api("/api/admin/auctions/"+id+"/toggle-room",{method:"POST",body:JSON.stringify({is_room:!isRoom})}); toast("Updated"); loadAuctions(); }
-  catch(e){ toast(e.message,true); }
-}
-async function closeAuction(id){
-  if(!confirm("Close this auction and determine winner?")) return;
-  try{ await api("/api/admin/auctions/"+id+"/close",{method:"POST"}); toast("Closed"); loadAuctions(); loadPrizes(); }
-  catch(e){ toast(e.message,true); }
-}
-async function refundAuction(id){
-  if(!confirm("Refund ALL bids in this auction? This cancels the auction.")) return;
-  try{ await api("/api/admin/auctions/"+id+"/refund",{method:"POST"}); toast("Refunded"); loadAuctions(); }
-  catch(e){ toast(e.message,true); }
-}
-
-$("#newAuctionBtn").onclick=()=>newAuctionModal();
-function newAuctionModal(a=null){
-  const isEdit=!!a;
-  let imageDataUrl=a?.image_url||"";
-  let imageFile=null;
-  
-  modal(`<h3 id="modal-title" class="font-bold text-lg mb-4">${isEdit?"Edit":"New"} Auction</h3>
-  <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-    <input id="atitle" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Item Title" value="${a?.title||""}" maxlength="200">
-    <textarea id="adesc" class="w-full input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Description" rows="2">${a?.description||""}</textarea>
-    
-    <div class="flex gap-2">
-      <label class="flex-1 flex items-center gap-2 p-3 border-2 rounded-xl ${a?.is_room?"border-emerald-500 bg-emerald-50":"border-slate-200"} cursor-pointer touch-target">
-        <input type="radio" name="atype" value="room" class="w-4 h-4 text-emerald-600" ${a?.is_room?"checked":""}>
-        <span class="font-medium">⚡ Flash Room (Capped Slots)</span>
-      </label>
-      <label class="flex-1 flex items-center gap-2 p-3 border-2 rounded-xl ${!a?.is_room?"border-emerald-500 bg-emerald-50":"border-slate-200"} cursor-pointer touch-target">
-        <input type="radio" name="atype" value="item" class="w-4 h-4 text-emerald-600" ${!a?.is_room?"checked":""}>
-        <span class="font-medium">🛍️ Open Bidded Item (Timer)</span>
-      </label>
-    </div>
-    
-    <div class="grid grid-cols-2 gap-2">
-      <input id="amarket" type="number" step="0.01" min="0.01" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Market Value (ETB)" value="${a?.market_value||""}" required>
-      <input id="afee" type="number" step="0.01" min="0.01" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Bid Fee / Amount (ETB)" value="${a?.bid_fee||""}" required>
-    </div>
-    
-    <div class="grid grid-cols-2 gap-2">
-      <input id="aslots" type="number" min="1" class="input-base border border-slate-300 rounded-xl px-4 py-3" placeholder="Max Slots" value="${a?.max_slots||""}" required>
-      <input id="aends" type="datetime-local" class="input-base border border-slate-300 rounded-xl px-4 py-3" value="${a?.ends_at?a.ends_at.slice(0,16):""}">
-    </div>
-    
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-2">Product Image</label>
-      <div class="relative mb-2">
-        <img id="imgPreview" class="img-preview w-full" src="${a?.image_url||""}" alt="Preview" style="display:${a?.image_url?"block":"none"}">
-        <div id="imgPlaceholder" class="img-preview-placeholder" style="display:${a?.image_url?"none":"flex"}">📷</div>
-      </div>
-      <div class="space-y-2">
-        <input type="file" id="imgFile" accept="image/*" class="input-base border border-slate-300 rounded-xl px-4 py-3 w-full" onchange="handleImageFile(this)">
-        <input type="url" id="aimage" class="input-base border border-slate-300 rounded-xl px-4 py-3 w-full" placeholder="Or paste image URL" value="${a?.image_url||""}">
-        <p class="text-xs text-slate-500">Upload a file (auto-resized to WebP) or paste a URL. Max 2MB recommended.</p>
-      </div>
-    </div>
-    
-    <button id="asave" class="w-full bg-emerald-600 text-white rounded-xl py-3 font-semibold touch-target mt-4">${isEdit?"Save Changes":"Create Auction"}</button>
-  </div>`);
-  
-  function handleImageFile(input){
-    const file=input.files[0];
-    if(!file) return;
-    if(file.size>5*1024*1024){ toast("Image too large (max 5MB)",true); return; }
-    imageFile=file;
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const img=new Image();
-      img.onload=()=>{
-        const canvas=document.createElement("canvas");
-        const maxDim=800;
-        let {width,height}=img;
-        if(width>maxDim||height>maxDim){
-          if(width>height){ height=Math.round(height*maxDim/width); width=maxDim; }
-          else{ width=Math.round(width*maxDim/height); height=maxDim; }
-        }
-        canvas.width=width; canvas.height=height;
-        const ctx=canvas.getContext("2d");
-        ctx.drawImage(img,0,0,width,height);
-        imageDataUrl=canvas.toDataURL("image/webp",0.85);
-        $("#imgPreview").src=imageDataUrl;
-        $("#imgPreview").style.display="block";
-        $("#imgPlaceholder").style.display="none";
-        $("#aimage").value="";
-      };
-      img.src=e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-  
-  $("#asave").onclick=async()=>{
-    const isRoom=$('input[name="atype"]:checked')?.value==="room";
-    const body={title:$("#atitle").value,description:$("#adesc").value,market_value:$("#amarket").value,bid_fee:$("#afee").value,max_slots:parseInt($("#aslots").value),is_room:isRoom,ends_at:$("#aends").value||null,image_url:imageDataUrl||$("#aimage").value||null};
-    if(!body.title||!body.market_value||!body.bid_fee||!body.max_slots){ toast("Fill required fields",true); return; }
-    try{
-      await api("/api/admin/auctions"+(isEdit?"":""),{method:"POST",body:JSON.stringify(body)});
-      toast(isEdit?"Updated":"Created"); closeModal(); loadAuctions();
-    }catch(e){ toast(e.message,true); }
-  };
-}
-
-async function loadPrizes(){
-  try{
-    const d=await api("/api/admin/prizes?status=all");
-    const list=$("#prizesList");
-    list.innerHTML=d.map(p=>`
-      <div class="auction-card">
-        <div class="font-semibold">${p.title}</div>
-        <div class="row"><span class="label">Winner</span><span class="value">${p.winner_phone}</span></div>
-        <div class="row"><span class="label">Winning Bid</span><span class="value">${p.lowest_unique_bid}</span></div>
-        <div class="row"><span class="label">Market Value</span><span class="value">${etb(p.market_value)}</span></div>
-        <div class="row"><span class="label">Status</span><span class="value"><select class="prizeStatus input-base border border-slate-300 rounded-lg px-3 py-2 text-sm touch-target" data-id="${p.auction_id}">
-          <option value="pending" ${p.prize_status==="pending"?"selected":""}>Pending</option>
-          <option value="contacted" ${p.prize_status==="contacted"?"selected":""}>Contacted</option>
-          <option value="delivered" ${p.prize_status==="delivered"?"selected":""}>Delivered</option>
-        </select></span></div>
-      </div>
-    `).join("");
-    $$(".prizeStatus").forEach(s=>s.onchange=()=>updatePrize(s.dataset.id,s.value));
-  }catch(e){ toast(e.message,true); }
-}
-async function updatePrize(id,status){
-  try{ await api("/api/admin/prizes/"+id,{method:"POST",body:JSON.stringify({prize_status:status})}); toast("Updated"); loadPrizes(); }
-  catch(e){ toast(e.message,true); }
-}
-
-let userSearchDebounce=null;
-async function loadUsers(){
-  try{
-    const q=$("#userSearch").value;
-    const d=await api("/api/admin/users?q="+encodeURIComponent(q)+"&limit=100");
-    const list=$("#usersList");
-    list.innerHTML=d.map(u=>`
-      <div class="auction-card">
-        <div class="font-semibold">${u.phone_number}</div>
-        <div class="row"><span class="label">ID</span><span class="value font-mono text-xs">${u.id}</span></div>
-        <div class="row"><span class="label">Balance</span><span class="value">${etb(u.wallet_balance)}</span></div>
-        <div class="row"><span class="label">Verified</span><span class="value"><span class="badge ${u.is_verified?"bg-emerald-100 text-emerald-700":"bg-slate-100 text-slate-700"}">${u.is_verified?"Yes":"No"}</span></span></div>
-        <div class="row"><span class="label">Status</span><span class="value"><span class="badge ${u.blocked?"bg-red-100 text-red-700":"bg-emerald-100 text-emerald-700"}">${u.blocked?"Blocked":"Active"}</span></span></div>
-        <div class="btn-group">
-          <button class="blockUser px-3 py-2 text-xs rounded touch-target ${u.blocked?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}" data-id="${u.id}" data-blocked="${u.blocked}">${u.blocked?"Unblock":"Block"}</button>
-          <button class="adjustWallet px-3 py-2 text-xs rounded bg-blue-100 text-blue-700 touch-target" data-id="${u.id}" data-phone="${u.phone_number}">Adjust Wallet</button>
-        </div>
-      </div>
-    `).join("");
-    $$(".blockUser").forEach(b=>b.onclick=()=>blockUser(b.dataset.id,b.dataset.blocked==="true"));
-    $$(".adjustWallet").forEach(b=>b.onclick=()=>adjustWallet(b.dataset.id,b.dataset.phone));
-  }catch(e){ toast(e.message,true); }
-}
-$("#userSearch").oninput=()=>{ clearTimeout(userSearchDebounce); userSearchDebounce=setTimeout(loadUsers,300); };
-
-async function blockUser(id,blocked){
-  const reason=blocked?prompt("Unblock reason (optional):"):prompt("Block reason:");
-  if(reason===null) return;
-  try{ await api("/api/admin/users/"+id+"/block",{method:"POST",body:JSON.stringify({blocked:!blocked,reason:reason||undefined})}); toast("Updated"); loadUsers(); }
-  catch(e){ toast(e.message,true); }
-}
-function adjustWallet(id,phone){
-  const amt=prompt(`Adjust wallet for ${phone} (positive to credit, negative to debit):`);
-  if(amt===null) return;
-  const note=prompt("Note (optional):")||"admin adjustment";
-  try{ await api("/api/admin/users/"+id+"/adjust-wallet",{method:"POST",body:JSON.stringify({amount:amt,note})}); toast("Adjusted"); loadUsers(); }
-  catch(e){ toast(e.message,true); }
-}
-
-async function loadPayments(){
-  try{
-    const d=await api("/api/admin/payments?status=pending&limit=100");
-    const list=$("#paymentsList");
-    list.innerHTML=d.map(p=>`
-      <div class="auction-card">
-        <div class="font-semibold">${p.tx_ref}</div>
-        <div class="row"><span class="label">Provider</span><span class="value"><span class="badge bg-slate-100 text-slate-700">${p.provider}</span></span></div>
-        <div class="row"><span class="label">Amount</span><span class="value">${etb(p.amount)}</span></div>
-        <div class="row"><span class="label">User</span><span class="value">${p.user_phone}</span></div>
-        <div class="row"><span class="label">Status</span><span class="value"><span class="badge ${p.status==="pending"?"bg-amber-100 text-amber-700":p.status==="confirmed"?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}">${p.status}</span></span></div>
-        <div class="btn-group">
-          ${p.status==="pending"?`<button class="approvePay px-3 py-2 text-xs rounded bg-emerald-100 text-emerald-700 touch-target" data-ref="${p.tx_ref}">Approve</button><button class="rejectPay px-3 py-2 text-xs rounded bg-red-100 text-red-700 touch-target" data-ref="${p.tx_ref}">Reject</button>`:"—"}
-        </div>
-      </div>
-    `).join("");
-    $$(".approvePay").forEach(b=>b.onclick=()=>resolvePayment(b.dataset.ref,"approve"));
-    $$(".rejectPay").forEach(b=>b.onclick=()=>resolvePayment(b.dataset.ref,"reject"));
-  }catch(e){ toast(e.message,true); }
-}
-async function resolvePayment(ref,action){
-  const reason=action==="reject"?prompt("Rejection reason:"):undefined;
-  if(action==="reject" && reason===null) return;
-  try{ await api("/api/admin/payments/"+ref+"/resolve",{method:"POST",body:JSON.stringify({action,reason})}); toast(action==="approve"?"Approved":"Rejected"); loadPayments(); }
-  catch(e){ toast(e.message,true); }
-}
-
-async function checkAuth(){
-  if(!token){ showLogin(); return false; }
-  try{
-    await api("/api/admin/stats");
-    return true;
-  }catch(e){
-    token=""; localStorage.removeItem("at"); showLogin(); return false;
-  }
-}
-
-(async()=>{
-  initTabs();
-  const ok=await checkAuth();
-  if(ok){
-    adminUser={username:"Admin"}; // Will be updated after load
-    paintHeader();
-    await loadAll();
-  }
-})();
-</script>
-</body></html>
+let tok=sessionStorage.getItem("at")||"",who=JSON.parse(sessionStorage.getItem("aw")||"null"),tab="Dashboard";
+const TABS=["Dashboard","Auctions","Prizes","Commissions","Users","Payments","Audit"];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const etb=n=>"ETB "+Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
+function toast(m,bad){const t=$("#toast");t.textContent=m;t.className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full text-sm text-white "+(bad?"bg-red-600":"bg-slate-900");setTimeout(()=>t.classList.add("hidden"),3500)}
+async function api(p,o={}){const h={"Content-Type":"application/json"};if(tok)h.Authorization="Bearer "+tok;
+ const r=await fetch("/api/admin"+p,{...o,headers:h});const d=await r.json().catch(()=>({}));
+ if(r.status===401&&tok){logout();throw new Error("Session expired")}
+ if(!r.ok)throw new Error(typeof d.detail==="string"?d.detail:"Request failed");return d}
+const post=(p,b)=>api(p,{method:"POST",body:JSON.stringify(b||{})});
+function logout(){tok="";who=null;sessionStorage.clear();boot()}
+$("#out").onclick=logout;
+$("#lg").onclick=async()=>{try{const d=await post("/login",{username:$("#u").value.trim(),password:$("#p").value});
+ tok=d.token;who={username:d.username,role:d.role};sessionStorage.setItem("at",tok);sessionStorage.setItem("aw",JSON.stringify(who));boot()}catch(e){toast(e.message,1)}};
+$("#p").onkeydown=e=>{if(e.key==="Enter")$("#lg").click()};
+const card=(t,v,sub)=>`<div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm"><div class="text-xs text-slate-500">${t}</div><div class="text-xl font-bold text-emerald-700 mt-1">${v}</div>${sub?`<div class="text-[11px] text-slate-400">${sub}</div>`:""}</div>`;
+const table=(cols,rows,empty="Nothing here yet.")=>rows.length?`<div class="bg-white rounded-2xl border border-slate-200 overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500 text-xs"><tr>${cols.map(c=>`<th class="text-left px-3 py-2 whitespace-nowrap">${c}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr class="border-t border-slate-100">${r.map(c=>`<td class="px-3 py-2 align-top">${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`:`<p class="text-sm text-slate-500">${empty}</p>`;
+const btn=(label,fn,cls="bg-slate-100")=>`<button onclick="${fn}" class="${cls} rounded-lg px-2.5 py-1 text-xs font-semibold mr-1 mb-1">${label}</button>`;
+const pill=(t,c)=>`<span class="text-[11px] rounded-full px-2 py-0.5 font-semibold ${c}">${esc(t)}</span>`;
+const stc={active:"bg-emerald-100 text-emerald-800",ended:"bg-slate-200 text-slate-700",cancelled:"bg-red-100 text-red-700",calculating:"bg-amber-100 text-amber-800",pending:"bg-amber-100 text-amber-800",confirmed:"bg-emerald-100 text-emerald-800",failed:"bg-red-100 text-red-700",contacted:"bg-blue-100 text-blue-800",delivered:"bg-emerald-100 text-emerald-800"};
+const sp=s=>pill(s,stc[s]||"bg-slate-100");
+async function act(fn,msg){try{const d=await fn();toast(msg||"Done");go(tab);return d}catch(e){toast(e.message,1)}}
+function tabs(){$("#tabs").innerHTML=TABS.map(t=>`<button onclick="go('${t}')" class="px-4 py-1.5 rounded-full text-sm font-semibold border whitespace-nowrap ${t===tab?"bg-emerald-600 text-white border-emerald-600":"bg-white border-slate-200"}">${t}</button>`).join("")}
+async function go(t){tab=t;tabs();const v=$("#view");try{v.innerHTML=await VIEWS[t]()}catch(e){v.innerHTML=`<p class="text-red-600 text-sm">${esc(e.message)}</p>`}}
+const VIEWS={
+async Dashboard(){const s=await api("/stats");return `<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+ ${card("Bid revenue",etb(s.bid_revenue),s.bids_total.toLocaleString()+" bids")}${card("Platform fees",etb(s.platform_fees))}${card("Partner commissions",etb(s.partner_share))}${card("Deposits",etb(s.deposits))}
+ ${card("Wallet liability",etb(s.wallet_liability),"owed to players")}${card("Users",s.users)}${card("Live rooms / items",s.active_rooms+" / "+s.active_items)}${card("To action",s.pending_prizes+" prizes · "+s.pending_payments+" payments")}</div>`},
+async Auctions(){const l=await api("/auctions");
+ const form=`<div class="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm"><div class="font-bold mb-2">Create auction</div>
+ <div class="grid md:grid-cols-4 gap-2 text-sm">
+ <input id="a_t" class="border rounded-xl px-3 py-2 md:col-span-2" placeholder="Title"><input id="a_d" class="border rounded-xl px-3 py-2 md:col-span-2" placeholder="Description">
+ <input id="a_v" type="number" class="border rounded-xl px-3 py-2" placeholder="Retail value (ETB)"><input id="a_f" type="number" class="border rounded-xl px-3 py-2" placeholder="Bid fee (ETB)">
+ <input id="a_s" type="number" class="border rounded-xl px-3 py-2" placeholder="Max slots">
+ <select id="a_r" class="border rounded-xl px-3 py-2"><option value="1">⚡ Special Room (closes when full)</option><option value="0">🛍️ Open Item (timer)</option></select>
+ <div class="md:col-span-2 flex items-center gap-2">Ends at <input id="a_e" type="datetime-local" class="border rounded-xl px-3 py-2 flex-1"></div>
+ <button onclick="mk()" class="bg-emerald-600 text-white rounded-xl py-2 font-semibold md:col-span-2">Create</button></div>
+ <p class="text-[11px] text-slate-400 mt-1">End time is required for open items and optional for rooms.</p></div>`;
+ return form+table(["ID","Title","Type","Fee","Slots","Status","Winning bid","Ends","Actions"],l.map(a=>[a.id,esc(a.title),a.is_room?pill("⚡ Room","bg-amber-100 text-amber-800"):pill("🛍️ Open","bg-teal-100 text-teal-800"),etb(a.bid_fee),`${a.filled_slots}/${a.max_slots}`,sp(a.status),a.lowest_unique_bid??"—",a.ends_at?new Date(a.ends_at).toLocaleString():"—",
+ btn("Media",`md(${a.id})`)+(a.status==="active"?btn("Switch to "+(a.is_room?"Open":"Room"),`tg(${a.id})`)+btn("Close now",`cl(${a.id})`,"bg-amber-100")+btn("Cancel + refund",`cn(${a.id})`,"bg-red-100"):(a.status==="cancelled"||(a.status==="ended"&&!a.winner_id))?btn("Refund bidders",`rf(${a.id})`,"bg-red-100"):"")]))},
+async Prizes(){const l=await api("/prizes");return table(["Auction","Winner","Winning bid","Value","Fulfillment","Update"],l.map(a=>[esc(a.title),esc(a.winner_phone),a.lowest_unique_bid,etb(a.market_value),sp(a.prize_status),
+ ["pending","contacted","delivered"].map(s=>btn(s,`pz(${a.id},'${s}')`,s===a.prize_status?"bg-emerald-600 text-white":"bg-slate-100")).join("")+btn("Media",`md(${a.id})`)]),"No winners yet.")},
+async Commissions(){const [l,s]=await Promise.all([api("/commissions"),api("/stats")]);
+ return `<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">${card("Platform fees",etb(s.platform_fees))}${card("Partner commissions",etb(s.partner_share))}${card("Gross bid revenue",etb(s.bid_revenue))}</div>`+
+ table(["Auction","Bids","Platform fee","Partner share"],l.map(c=>[`#${c.auction_id} ${esc(c.title)}`,c.bids.toLocaleString(),etb(c.platform_fee),etb(c.partner_share)]),"No commissions recorded.")},
+async Users(){const q=$("#uq")?.value||"";const l=await api("/users?q="+encodeURIComponent(q));
+ return `<div class="flex gap-2 mb-3"><input id="uq" value="${esc(q)}" class="border rounded-xl px-3 py-2 text-sm flex-1" placeholder="Search phone, e.g. +2519"><button onclick="go('Users')" class="bg-emerald-600 text-white rounded-xl px-4 text-sm font-semibold">Search</button></div>`+
+ table(["ID","Phone","Wallet","Status","Actions"],l.map(u=>[u.id,esc(u.phone_number),etb(u.wallet_balance),u.blocked?pill("Blocked","bg-red-100 text-red-700"):pill("Active","bg-emerald-100 text-emerald-800"),
+ btn("Adjust wallet",`aj(${u.id})`)+btn(u.blocked?"Unblock":"Block",`bl(${u.id},${!u.blocked})`,u.blocked?"bg-emerald-100":"bg-red-100")]))},
+async Payments(){const l=await api("/payments");return table(["ID","Phone","Provider","Reference","Amount","Status","Actions"],l.map(p=>[p.id,esc(p.phone),esc(p.provider),`<span class="font-mono text-xs">${esc(p.tx_ref)}</span>`,etb(p.amount),sp(p.status)+(p.failure_reason?`<div class="text-[11px] text-slate-400">${esc(p.failure_reason)}</div>`:""),
+ p.status!=="confirmed"?btn("Approve",`pa(${p.id})`,"bg-emerald-100")+(p.status==="pending"?btn("Reject",`pr(${p.id})`,"bg-red-100")+btn("Recheck",`pc(${p.id})`):""):""]))},
+async Audit(){const l=await api("/audit");return table(["When","Admin","Action","Detail","IP"],l.map(a=>[new Date(a.at).toLocaleString(),esc(a.admin),esc(a.action),esc(a.detail),esc(a.ip)]))}};
+const mk=()=>act(()=>{const e=$("#a_e").value;return post("/auctions",{title:$("#a_t").value,description:$("#a_d").value,market_value:$("#a_v").value,bid_fee:$("#a_f").value,max_slots:+$("#a_s").value,is_room:$("#a_r").value==="1",ends_at:e?new Date(e).toISOString():null})},"Auction created");
+const tg=id=>act(()=>post(`/auctions/${id}/toggle-room`),"Type switched");
+const cl=id=>confirm("Close and resolve this auction now?")&&act(()=>post(`/auctions/${id}/close`),"Auction closed");
+const cn=id=>confirm("Cancel and refund ALL bidders?")&&act(()=>post(`/auctions/${id}/cancel`),"Cancelled and refunded");
+const rf=id=>confirm("Refund all bidders of this auction?")&&act(()=>post(`/auctions/${id}/refund`),"Refunded");
+const pz=(id,s)=>act(()=>post(`/auctions/${id}/prize`,{status:s}),"Prize updated");
+const bl=(id,b)=>{const r=b?prompt("Reason for blocking?")||"":"";if(b&&!r)return;act(()=>post(`/users/${id}/block`,{blocked:b,reason:r}),b?"User blocked":"User unblocked")};
+const aj=id=>{const a=prompt("Amount in ETB (negative to deduct):");if(!a)return;const r=prompt("Reason (required):");if(!r)return;act(()=>post(`/users/${id}/adjust`,{amount:a,reason:r}),"Wallet adjusted")};
+const pa=id=>confirm("Credit this deposit to the user's wallet?")&&act(()=>post(`/payments/${id}/approve`),"Payment approved");
+const pr=id=>act(()=>post(`/payments/${id}/reject`),"Payment rejected");
+const pc=id=>act(async()=>{const d=await post(`/payments/${id}/recheck`);toast(d.status+": "+d.note);return d},"Rechecked");
+const MF=[["image_url","Product photo","image/*"],["winner_photo_url","Winner photo","image/*"],["winner_video_url","Winner video","video/*"]];
+async function md(id){const l=await api("/auctions");const a=l.find(x=>x.id===id);if(!a)return;
+ $("#mbox").innerHTML=`<h3 class="font-bold text-lg mb-3">Media: ${esc(a.title)}</h3>`+MF.map(([k,lab,acc])=>`<div class="mb-3"><div class="text-xs text-slate-500 mb-1">${lab}</div><input id="m_${k}" value="${esc(a[k]||"")}" class="w-full border rounded-xl px-3 py-2 text-sm mb-1" placeholder="/uploads/... or https://..."><input type="file" accept="${acc}.jpg,.png,.webp,.mp4,.webm" onchange="up(this,'m_${k}')" class="text-xs"></div>`).join("")+
+ `<div class="mb-3"><div class="text-xs text-slate-500 mb-1">Winner quote</div><textarea id="m_winner_quote" maxlength="500" class="w-full border rounded-xl px-3 py-2 text-sm">${esc(a.winner_quote||"")}</textarea></div>
+ <div class="mb-3"><div class="text-xs text-slate-500 mb-1">Winner city</div><input id="m_winner_city" maxlength="80" value="${esc(a.winner_city||"")}" class="w-full border rounded-xl px-3 py-2 text-sm"></div>
+ <div class="flex gap-2"><button onclick="saveMedia(${id})" class="flex-1 bg-emerald-600 text-white rounded-xl py-2 font-semibold">Save</button><button onclick="$('#modal').classList.add('hidden')" class="flex-1 bg-slate-100 rounded-xl py-2 font-semibold">Close</button></div>`;
+ $("#modal").classList.remove("hidden")}
+async function up(inp,target){const file=inp.files[0];if(!file)return;if(file.size>15*1024*1024)return toast("Max file size is 15 MB",1);
+ const fd=new FormData();fd.append("file",file);toast("Uploading…");
+ try{const r=await fetch("/api/admin/upload",{method:"POST",headers:{Authorization:"Bearer "+tok},body:fd});const d=await r.json();
+  if(!r.ok)throw new Error(typeof d.detail==="string"?d.detail:"Upload failed");$("#"+target).value=d.url;toast("Uploaded — press Save to attach")}catch(e){toast(e.message,1)}}
+async function saveMedia(id){const b={};["image_url","winner_photo_url","winner_video_url","winner_quote","winner_city"].forEach(k=>b[k]=$("#m_"+k).value);
+ try{await post(`/prizes/${id}/media`,b);$("#modal").classList.add("hidden");toast("Media saved");go(tab)}catch(e){toast(e.message,1)}}
+function boot(){const ok=!!tok&&!!who;$("#login").classList.toggle("hidden",ok);$("#app").classList.toggle("hidden",!ok);if(ok){$("#who").textContent=who.username+" · "+who.role;go(tab)}}
+boot();
+</script></body></html>

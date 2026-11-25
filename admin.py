@@ -1,405 +1,488 @@
-import os, hashlib, secrets, datetime as dt
+import os, hashlib, secrets, hmac, uuid, asyncio, datetime as dt
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request, UploadFile, File, Form
-from pydantic import BaseModel, Field
-from sqlalchemy import select, update, func, desc, text
-from database import (SessionLocal, AdminUser, AdminAuditLog, User, UserFlag, Auction, BidLedger,
-                      WalletTransaction, PaymentIntent, PartnerCommission, utcnow)
-from auth import JWT_SECRET, DEV_MODE
 import jwt
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, UploadFile, File
+from pydantic import BaseModel, Field
+from sqlalchemy import select, func, update, delete
+from database import (SessionLocal, User, UserFlag, Auction, BidLedger, WalletTransaction, PaymentIntent,
+                      PartnerCommission, AdminUser, AdminAuditLog, utcnow)
+from auth import DEV_MODE, JWT_SECRET, require_secret
+import payments
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin")
+SECRET = require_secret("ADMIN_JWT_SECRET", "dev-only-admin-secret-never-use-in-production")
+if not DEV_MODE and SECRET == JWT_SECRET:
+    raise RuntimeError("ADMIN_JWT_SECRET must differ from JWT_SECRET")
+ALLOWED_IPS = [x.strip() for x in os.getenv("ADMIN_ALLOWED_IPS", "").split(",") if x.strip()]
+TRUST_PROXY = os.getenv("TRUST_PROXY", "0") == "1"  # set to 1 only when behind exactly one trusted proxy (e.g. Render)
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+MAX_UPLOAD = 15 * 1024 * 1024
+UPLOAD_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp",
+                ".mp4": "video/mp4", ".webm": "video/webm"}
+ROLES = ("superadmin", "operator", "finance", "support")
+AREAS = {"read": set(ROLES), "auctions": {"superadmin", "operator"}, "finance": {"superadmin", "finance"},
+         "users": {"superadmin", "support"}, "prize": {"superadmin", "operator", "support"},
+         "media": {"superadmin", "operator", "support"}}
 
-ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", JWT_SECRET)
-ADMIN_ALLOWED_IPS = [ip.strip() for ip in os.getenv("ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()]
-MAX_FAILED_LOGINS = 5
-LOCKOUT_MINUTES = 15
 
-ROLE_PERMS = {
-    "superadmin": ["stats", "auctions", "prizes", "users", "payments", "manage_admins"],
-    "operator": ["stats", "auctions", "prizes", "users"],
-    "finance": ["stats", "payments", "users"],
-    "support": ["stats", "users"],
-}
-
-def hash_password(password: str) -> str:
+def hash_password(pw: str) -> str:
     salt = secrets.token_bytes(16)
-    dk = hashlib.scrypt(password.encode(), salt=salt, n=16384, r=8, p=1, dklen=32)
-    return salt.hex() + "$" + dk.hex()
+    return salt.hex() + "$" + hashlib.scrypt(pw.encode(), salt=salt, n=2**14, r=8, p=1, dklen=32).hex()
 
-def verify_password(password: str, stored: str) -> bool:
+
+def check_password(pw: str, stored: str) -> bool:
     try:
-        salt_hex, dk_hex = stored.split("$")
-        salt = bytes.fromhex(salt_hex)
-        dk = hashlib.scrypt(password.encode(), salt=salt, n=16384, r=8, p=1, dklen=32)
-        return secrets.compare_digest(dk.hex(), dk_hex)
+        salt_hex, h_hex = stored.split("$")
+        h = hashlib.scrypt(pw.encode(), salt=bytes.fromhex(salt_hex), n=2**14, r=8, p=1, dklen=32)
+        return hmac.compare_digest(h.hex(), h_hex)
     except Exception:
         return False
 
-def make_admin_token(admin_id: int, username: str, role: str) -> str:
-    exp = dt.datetime.utcnow() + dt.timedelta(hours=8)
-    return jwt.encode({"sub": str(admin_id), "username": username, "role": role, "exp": exp}, ADMIN_JWT_SECRET, algorithm="HS256")
 
-async def get_client_ip(request: Request) -> str:
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+def client_ip(req: Request) -> str:
+    if TRUST_PROXY:
+        xff = req.headers.get("x-forwarded-for")
+        if xff:
+            return xff.split(",")[-1].strip()  # the entry appended by our own proxy, not client-supplied
+    return req.client.host if req.client else ""
 
-async def log_audit(admin_username: str, action: str, detail: str | None, ip: str):
-    async with SessionLocal() as s, s.begin():
-        s.add(AdminAuditLog(admin_username=admin_username, action=action, detail=detail, ip=ip))
 
-async def check_admin_perms(admin: AdminUser, required: str) -> bool:
-    perms = ROLE_PERMS.get(admin.role, [])
-    return required in perms or admin.role == "superadmin"
+def ip_guard(req: Request):
+    if ALLOWED_IPS and client_ip(req) not in ALLOWED_IPS:
+        raise HTTPException(403, "IP not allowed")
 
-async def get_current_admin(
-    authorization: str | None = Header(default=None),
-    request: Request = None
-) -> AdminUser:
+
+async def current_admin(req: Request, authorization: str | None = Header(default=None)) -> dict:
+    ip_guard(req)
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Admin authentication required")
-    
-    if ADMIN_ALLOWED_IPS:
-        ip = await get_client_ip(request)
-        if ip not in ADMIN_ALLOWED_IPS:
-            raise HTTPException(403, "IP not allowed")
-    
+        raise HTTPException(401, "Admin login required")
     try:
-        payload = jwt.decode(authorization[7:], ADMIN_JWT_SECRET, algorithms=["HS256"])
-        admin_id = int(payload["sub"])
-        role = payload.get("role", "support")
+        d = jwt.decode(authorization[7:], SECRET, algorithms=["HS256"])
     except Exception:
-        raise HTTPException(401, "Invalid or expired admin token")
-    
+        raise HTTPException(401, "Session expired")
     async with SessionLocal() as s:
-        admin = await s.get(AdminUser, admin_id)
-        if not admin or not admin.is_active:
-            raise HTTPException(401, "Admin not found or inactive")
-        if admin.locked_until and admin.locked_until > utcnow():
-            raise HTTPException(403, "Admin account locked")
-    return admin
+        a = (await s.execute(select(AdminUser).where(AdminUser.username == d["sub"]))).scalar_one_or_none()
+    if not a or not a.is_active:
+        raise HTTPException(401, "Account disabled")
+    return {"username": a.username, "role": a.role, "ip": client_ip(req)}
 
-class AdminLoginIn(BaseModel):
+
+def need(area: str):
+    async def dep(adm: dict = Depends(current_admin)):
+        if adm["role"] not in AREAS[area]:
+            raise HTTPException(403, f"Role '{adm['role']}' cannot do this")
+        return adm
+    return dep
+
+
+def audit(s, adm: dict, action: str, detail: str = ""):
+    s.add(AdminAuditLog(admin_username=adm["username"], action=action, detail=detail, ip=adm["ip"]))
+
+
+def f(x): return float(x or 0)
+def iso(d): return d.isoformat() + "Z" if d else None
+
+
+class LoginIn(BaseModel):
     username: str
     password: str
 
+
 @router.post("/login")
-async def admin_login(body: AdminLoginIn, request: Request):
-    ip = await get_client_ip(request)
+async def login(b: LoginIn, req: Request):
+    ip_guard(req)
+    err, token, role = None, None, None
     async with SessionLocal() as s, s.begin():
-        admin = (await s.execute(select(AdminUser).where(AdminUser.username == body.username))).scalar_one_or_none()
-        if not admin:
-            await log_audit(body.username, "login_failed", "user not found", ip)
-            raise HTTPException(401, "Invalid credentials")
-        if admin.locked_until and admin.locked_until > utcnow():
-            await log_audit(admin.username, "login_failed", "account locked", ip)
-            raise HTTPException(403, "Account locked")
-        if not verify_password(body.password, admin.password_hash):
-            admin.failed_logins += 1
-            if admin.failed_logins >= MAX_FAILED_LOGINS:
-                admin.locked_until = utcnow() + dt.timedelta(minutes=LOCKOUT_MINUTES)
-            await log_audit(admin.username, "login_failed", "bad password", ip)
-            raise HTTPException(401, "Invalid credentials")
-        admin.failed_logins = 0
-        admin.locked_until = None
-        await log_audit(admin.username, "login_success", None, ip)
-    token = make_admin_token(admin.id, admin.username, admin.role)
-    return {"token": token, "role": admin.role, "username": admin.username}
+        a = (await s.execute(select(AdminUser).where(AdminUser.username == b.username).with_for_update())).scalar_one_or_none()
+        if not a or not a.is_active:
+            err = (401, "Invalid credentials")
+        elif a.locked_until and a.locked_until > utcnow():
+            err = (423, "Account temporarily locked. Try again later.")
+        elif not check_password(b.password, a.password_hash):
+            a.failed_logins += 1
+            if a.failed_logins >= 5:
+                a.locked_until, a.failed_logins = utcnow() + dt.timedelta(minutes=15), 0
+            s.add(AdminAuditLog(admin_username=a.username, action="login_failed", ip=client_ip(req)))
+            err = (401, "Invalid credentials")
+        else:
+            a.failed_logins, a.locked_until = 0, None
+            s.add(AdminAuditLog(admin_username=a.username, action="login", ip=client_ip(req)))
+            token = jwt.encode({"sub": a.username, "exp": utcnow() + dt.timedelta(hours=8)}, SECRET, algorithm="HS256")
+            role = a.role
+    if err:
+        raise HTTPException(*err)
+    return {"token": token, "username": b.username, "role": role}
 
-def require_perm(permission: str):
-    async def dep(admin: AdminUser = Depends(get_current_admin)):
-        if not await check_admin_perms(admin, permission):
-            raise HTTPException(403, f"Requires {permission} permission")
-        return admin
-    return dep
 
-# ---------- Stats ----------
 @router.get("/stats")
-async def admin_stats(admin: AdminUser = Depends(require_perm("stats"))):
+async def stats(adm=Depends(need("read"))):
     async with SessionLocal() as s:
-        total_bid_revenue = (await s.execute(select(func.coalesce(func.sum(BidLedger.fee_charged), 0)))).scalar() or 0
-        total_bids = (await s.execute(select(func.count(BidLedger.id)))).scalar() or 0
-        platform_fees = (await s.execute(select(func.coalesce(func.sum(PartnerCommission.platform_fee), 0)))).scalar() or 0
-        partner_shares = (await s.execute(select(func.coalesce(func.sum(PartnerCommission.partner_share), 0)))).scalar() or 0
-        total_deposits = (await s.execute(select(func.coalesce(func.sum(WalletTransaction.amount), 0)).where(WalletTransaction.kind == "deposit"))).scalar() or 0
-        wallet_liability = (await s.execute(select(func.coalesce(func.sum(User.wallet_balance), 0)))).scalar() or 0
-        active_rooms = (await s.execute(select(func.count(Auction.id)).where(Auction.status == "active", Auction.is_room == True))).scalar() or 0
-        active_items = (await s.execute(select(func.count(Auction.id)).where(Auction.status == "active", Auction.is_room == False))).scalar() or 0
-        pending_prizes = (await s.execute(select(func.count(Auction.id)).where(Auction.status == "ended", Auction.winner_id.is_not(None), Auction.prize_status == "pending"))).scalar() or 0
-    return {
-        "total_bid_revenue": float(total_bid_revenue),
-        "total_bids_cast": total_bids,
-        "platform_fees_collected": float(platform_fees),
-        "partner_shares_accrued": float(partner_shares),
-        "total_deposits": float(total_deposits),
-        "wallet_liability": float(wallet_liability),
-        "active_flash_rooms": active_rooms,
-        "active_bidded_items": active_items,
-        "pending_prizes": pending_prizes,
-    }
+        one = lambda q: s.scalar(q)
+        return {
+            "bid_revenue": f(await one(select(func.sum(BidLedger.fee_charged)))),
+            "bids_total": await one(select(func.count(BidLedger.id))) or 0,
+            "platform_fees": f(await one(select(func.sum(PartnerCommission.platform_fee)))),
+            "partner_share": f(await one(select(func.sum(PartnerCommission.partner_share)))),
+            "deposits": f(await one(select(func.sum(WalletTransaction.amount)).where(WalletTransaction.kind == "deposit"))),
+            "wallet_liability": f(await one(select(func.sum(User.wallet_balance)))),
+            "users": await one(select(func.count(User.id))) or 0,
+            "active_rooms": await one(select(func.count(Auction.id)).where(Auction.status == "active", Auction.is_room.is_(True))) or 0,
+            "active_items": await one(select(func.count(Auction.id)).where(Auction.status == "active", Auction.is_room.is_(False))) or 0,
+            "pending_prizes": await one(select(func.count(Auction.id)).where(Auction.status == "ended", Auction.winner_id.is_not(None), Auction.prize_status != "delivered")) or 0,
+            "pending_payments": await one(select(func.count(PaymentIntent.id)).where(PaymentIntent.status == "pending")) or 0}
 
-# ---------- Auctions ----------
-class AuctionCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
+
+# ---------- media ----------
+def clean_url(v):
+    v = (v or "").strip()
+    if not v:
+        return None
+    if len(v) > 500 or ".." in v or not (v.startswith("/uploads/") or v.startswith("https://")):
+        raise HTTPException(400, "URLs must start with /uploads/ or https://")
+    return v
+
+
+def sniff(ext: str, head: bytes) -> bool:
+    if ext in (".jpg", ".jpeg"): return head[:3] == b"\xff\xd8\xff"
+    if ext == ".png": return head[:8] == b"\x89PNG\r\n\x1a\n"
+    if ext == ".webp": return head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    if ext == ".mp4": return head[4:8] == b"ftyp"
+    if ext == ".webm": return head[:4] == b"\x1a\x45\xdf\xa3"
+    return False
+
+
+def _write(path: str, data: bytes):
+    with open(path, "wb") as fh:
+        fh.write(data)
+
+
+@router.post("/upload")
+async def upload(request: Request, file: UploadFile = File(...), adm=Depends(need("media"))):
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in UPLOAD_TYPES:
+        raise HTTPException(400, "Allowed types: jpg, png, webp, mp4, webm")
+    if int(request.headers.get("content-length") or 0) > MAX_UPLOAD + 1024 * 1024:
+        raise HTTPException(413, "File too large (max 15 MB)")
+    buf = bytearray()
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        buf += chunk
+        if len(buf) > MAX_UPLOAD:
+            raise HTTPException(413, "File too large (max 15 MB)")
+    if not buf or not sniff(ext, bytes(buf[:16])):
+        raise HTTPException(400, "File content does not match its extension")
+    name = f"{uuid.uuid4().hex}{ext}"
+    await asyncio.to_thread(_write, os.path.join(UPLOAD_DIR, name), bytes(buf))
+    async with SessionLocal() as s, s.begin():
+        audit(s, adm, "upload", f"{name} ({len(buf)} bytes)")
+    return {"url": "/uploads/" + name, "size": len(buf), "content_type": UPLOAD_TYPES[ext]}
+
+
+class MediaIn(BaseModel):
+    image_url: str | None = None
+    winner_photo_url: str | None = None
+    winner_video_url: str | None = None
+    winner_quote: str | None = Field(default=None, max_length=500)
+    winner_city: str | None = Field(default=None, max_length=80)
+
+
+# ---------- auctions ----------
+class AuctionIn(BaseModel):
+    title: str = Field(min_length=2, max_length=200)
     description: str = ""
     market_value: Decimal = Field(gt=0)
     bid_fee: Decimal = Field(gt=0)
-    max_slots: int = Field(gt=0)
+    max_slots: int = Field(gt=0, le=1_000_000)
     is_room: bool = False
     ends_at: dt.datetime | None = None
     image_url: str | None = None
 
 
-@router.post("/auctions/upload-image")
-async def admin_upload_image(
-    file: UploadFile = File(...),
-    admin: AdminUser = Depends(require_perm("auctions")),
-):
-    """Upload an image, resize to max 800px, convert to WebP data URL."""
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(400, "File must be an image")
-    content = await file.read()
-    if len(content) > 5 * 1024 * 1024:
-        raise HTTPException(400, "Image too large (max 5MB)")
-    try:
-        from PIL import Image
-        import io, base64
-        img = Image.open(io.BytesIO(content))
-        if img.mode in ("RGBA", "LA", "P"):
-            img = img.convert("RGB")
-        max_dim = 800
-        w, h = img.size
-        if w > max_dim or h > max_dim:
-            if w > h:
-                h = int(h * max_dim / w)
-                w = max_dim
-            else:
-                w = int(w * max_dim / h)
-                h = max_dim
-            img = img.resize((w, h), Image.Resampling.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, format="WEBP", quality=85, method=6)
-        data_url = "data:image/webp;base64," + base64.b64encode(buf.getvalue()).decode()
-        return {"image_url": data_url}
-    except Exception as e:
-        raise HTTPException(500, f"Image processing failed: {e}")
+def naive_utc(d: dt.datetime | None):
+    if d and d.tzinfo:
+        return d.astimezone(dt.timezone.utc).replace(tzinfo=None)
+    return d
 
 
-class AuctionToggle(BaseModel):
-    is_room: bool
+def aout(a: Auction):
+    return {"id": a.id, "title": a.title, "market_value": f(a.market_value), "bid_fee": f(a.bid_fee),
+            "max_slots": a.max_slots, "filled_slots": a.filled_slots, "is_room": a.is_room, "status": a.status,
+            "lowest_unique_bid": a.lowest_unique_bid, "winner_id": a.winner_id, "prize_status": a.prize_status,
+            "ends_at": iso(a.ends_at), "image_url": a.image_url, "winner_photo_url": a.winner_photo_url,
+            "winner_video_url": a.winner_video_url, "winner_quote": a.winner_quote, "winner_city": a.winner_city}
+
 
 @router.get("/auctions")
-async def admin_auctions(
-    admin: AdminUser = Depends(require_perm("auctions")),
-    status: str | None = Query(None),
-    is_room: bool | None = Query(None),
-    limit: int = Query(50, le=200),
-    offset: int = Query(0, ge=0)
-):
+async def auctions(adm=Depends(need("read"))):
     async with SessionLocal() as s:
-        q = select(Auction).order_by(desc(Auction.id))
-        if status:
-            q = q.where(Auction.status == status)
-        if is_room is not None:
-            q = q.where(Auction.is_room == is_room)
-        q = q.limit(limit).offset(offset)
-        auctions = (await s.execute(q)).scalars().all()
-    return [{"id": a.id, "title": a.title, "description": a.description, "market_value": float(a.market_value),
-             "bid_fee": float(a.bid_fee), "max_slots": a.max_slots, "filled_slots": a.filled_slots,
-             "is_room": a.is_room, "status": a.status, "ends_at": a.ends_at.isoformat() + "Z" if a.ends_at else None,
-             "image_url": a.image_url, "lowest_unique_bid": a.lowest_unique_bid, "winner_id": a.winner_id,
-             "prize_status": a.prize_status, "created_at": a.created_at.isoformat() + "Z"} for a in auctions]
+        return [aout(a) for a in (await s.execute(select(Auction).order_by(Auction.id.desc()))).scalars()]
+
 
 @router.post("/auctions")
-async def admin_create_auction(body: AuctionCreate, admin: AdminUser = Depends(require_perm("auctions")), request: Request = None):
+async def create_auction(b: AuctionIn, adm=Depends(need("auctions"))):
+    import main as m
+    if not b.is_room and not b.ends_at:
+        raise HTTPException(400, "Open items need an end time")
     async with SessionLocal() as s, s.begin():
-        a = Auction(**body.model_dump())
+        a = Auction(title=b.title, description=b.description, market_value=b.market_value, bid_fee=b.bid_fee,
+                    max_slots=b.max_slots, is_room=b.is_room, ends_at=naive_utc(b.ends_at), image_url=clean_url(b.image_url))
         s.add(a)
         await s.flush()
-        await log_audit(admin.username, "auction_create", f"id={a.id} title={a.title}", await get_client_ip(request))
-    return {"id": a.id, "message": "Auction created"}
+        audit(s, adm, "auction_create", f"#{a.id} {a.title} room={a.is_room}")
+    async with SessionLocal() as s:
+        await m.rebuild_redis(s, await s.get(Auction, a.id))
+    await m.ws_mgr.broadcast({"type": "closed", "auction_id": a.id})
+    return aout(a)
+
+
+@router.post("/prizes/{aid}/media")
+async def set_media(aid: int, b: MediaIn, adm=Depends(need("media"))):
+    """Attach product photo (image_url) and winner proof (photo, video, quote, city). Only supplied fields change; '' clears."""
+    async with SessionLocal() as s, s.begin():
+        a = await s.get(Auction, aid)
+        if not a:
+            raise HTTPException(404, "Not found")
+        for k in b.model_fields_set:
+            v = getattr(b, k)
+            setattr(a, k, clean_url(v) if k.endswith("_url") else ((v or "").strip() or None))
+        audit(s, adm, "auction_media", f"#{aid} fields={sorted(b.model_fields_set)}")
+        return aout(a)
+
 
 @router.post("/auctions/{aid}/toggle-room")
-async def admin_toggle_room(aid: int, body: AuctionToggle, admin: AdminUser = Depends(require_perm("auctions")), request: Request = None):
+async def toggle_room(aid: int, adm=Depends(need("auctions"))):
+    import main as m
     async with SessionLocal() as s, s.begin():
         a = await s.get(Auction, aid)
-        if not a: raise HTTPException(404, "Auction not found")
-        a.is_room = body.is_room
-        await log_audit(admin.username, "auction_toggle_room", f"id={aid} is_room={body.is_room}", await get_client_ip(request))
-    return {"ok": True}
+        if not a: raise HTTPException(404, "Not found")
+        if a.status != "active": raise HTTPException(409, "Only active auctions can change type")
+        new = not a.is_room
+        if new and a.filled_slots >= a.max_slots: raise HTTPException(409, "Already at capacity; cannot become a room")
+        if not new and not a.ends_at: raise HTTPException(409, "Set an end time before converting to an open item")
+        a.is_room = new
+        audit(s, adm, "auction_toggle_room", f"#{aid} is_room={new}")
+    await m.r.hset(m.META(aid), "is_room", "1" if new else "0")
+    await m.ws_mgr.broadcast({"type": "closed", "auction_id": aid})
+    return {"id": aid, "is_room": new}
+
 
 @router.post("/auctions/{aid}/close")
-async def admin_close_auction(aid: int, admin: AdminUser = Depends(require_perm("auctions")), request: Request = None):
-    from main import resolve
-    await resolve(aid)
-    await log_audit(admin.username, "auction_close", f"id={aid}", await get_client_ip(request))
-    return {"ok": True}
+async def close_auction(aid: int, adm=Depends(need("auctions"))):
+    import main as m
+    async with SessionLocal() as s:
+        a = await s.get(Auction, aid)
+    if not a or a.status != "active": raise HTTPException(409, "Auction is not active")
+    await m.resolve(aid)
+    async with SessionLocal() as s, s.begin():
+        audit(s, adm, "auction_close", f"#{aid}")
+        a = await s.get(Auction, aid)
+    return aout(a)
+
+
+async def refund_all(s, aid: int) -> tuple[int, Decimal]:
+    rows = (await s.execute(select(BidLedger.user_id, func.sum(BidLedger.fee_charged)).where(
+        BidLedger.auction_id == aid).group_by(BidLedger.user_id))).all()
+    n, total = 0, Decimal("0")
+    for uid, amt in rows:
+        ref = f"refund-{aid}-{uid}"
+        if (await s.execute(select(WalletTransaction.id).where(WalletTransaction.reference == ref))).first():
+            continue  # already refunded (idempotent)
+        u = (await s.execute(select(User).where(User.id == uid).with_for_update())).scalar_one()
+        u.wallet_balance = u.wallet_balance + amt
+        s.add(WalletTransaction(user_id=uid, kind="refund", amount=amt, balance_after=u.wallet_balance,
+                                reference=ref, note=f"Refund for auction #{aid}"))
+        n += 1
+        total += amt
+    return n, total
+
+
+@router.post("/auctions/{aid}/cancel")
+async def cancel_auction(aid: int, adm=Depends(need("auctions"))):
+    import main as m
+    async with SessionLocal() as s:
+        a = await s.get(Auction, aid)
+    if not a: raise HTTPException(404, "Not found")
+    if a.status != "active": raise HTTPException(409, "Only active auctions can be cancelled")
+    await m.r.hset(m.META(aid), "status", "ended")  # stop new reservations first
+    try:
+        async with SessionLocal() as s, s.begin():
+            # Waits for in-flight bids; any bid arriving later fails its status fence, so no bid can be missed.
+            claimed = (await s.execute(update(Auction).where(Auction.id == aid, Auction.status == "active")
+                                       .values(status="cancelled").returning(Auction.id))).first()
+            if not claimed: raise HTTPException(409, "Auction is no longer active")
+            n, total = await refund_all(s, aid)
+            await s.execute(delete(PartnerCommission).where(PartnerCommission.auction_id == aid))
+            audit(s, adm, "auction_cancel", f"#{aid} refunded {n} users, {total} ETB")
+    except BaseException:
+        try:  # reopen Redis only if the database still says active
+            async with SessionLocal() as s2:
+                cur = await s2.get(Auction, aid)
+            if cur and cur.status == "active":
+                await m.r.hset(m.META(aid), "status", "active")
+        except Exception:
+            pass
+        raise
+    await m.ws_mgr.broadcast({"type": "closed", "auction_id": aid})
+    return {"ok": True, "users_refunded": n, "total_refunded": float(total)}
+
 
 @router.post("/auctions/{aid}/refund")
-async def admin_refund_auction(aid: int, admin: AdminUser = Depends(require_perm("auctions")), request: Request = None):
-    from main import r, META, CNT, LUA_ROLLBACK
+async def refund_auction(aid: int, adm=Depends(need("finance"))):
+    """Refund every bidder of a cancelled auction, or of an ended auction that had no winner."""
     async with SessionLocal() as s, s.begin():
-        a = await s.get(Auction, aid)
-        if not a: raise HTTPException(404, "Auction not found")
-        if a.status != "active":
-            raise HTTPException(409, "Only active auctions can be refunded")
-        bids = (await s.execute(select(BidLedger).where(BidLedger.auction_id == aid))).scalars().all()
-        if not bids:
-            a.status = "cancelled"
-            await log_audit(admin.username, "auction_refund", f"id={aid} no bids", await get_client_ip(request))
-            return {"ok": True, "refunded": 0}
-        user_ids = [b.user_id for b in bids]
-        amounts = [b.bid_amount for b in bids]
-        fees = [b.fee_charged for b in bids]
-        for b in bids:
-            await s.delete(b)
-        u = (await s.execute(select(User).where(User.id.in_(user_ids)).with_for_update())).scalars().all()
-        for user in u:
-            user_bids = [b for b in bids if b.user_id == user.id]
-            refund = sum(b.fee_charged for b in user_bids)
-            user.wallet_balance += refund
-            s.add(WalletTransaction(user_id=user.id, kind="refund", amount=refund, balance_after=user.wallet_balance, reference=f"refund-auction-{aid}"))
-        await s.execute(update(Auction).where(Auction.id == aid).values(status="cancelled"))
-        padded = [str(x).zfill(8) for x in amounts]
-        await r.eval(LUA_ROLLBACK, 2, META(aid), CNT(aid), *padded)
-        await log_audit(admin.username, "auction_refund", f"id={aid} users={user_ids}", await get_client_ip(request))
-    return {"ok": True, "refunded": len(bids)}
+        a = (await s.execute(select(Auction).where(Auction.id == aid).with_for_update())).scalar_one_or_none()
+        if not a: raise HTTPException(404, "Not found")
+        if not (a.status == "cancelled" or (a.status == "ended" and a.winner_id is None)):
+            raise HTTPException(409, "Refund only for cancelled auctions or ended auctions without a winner")
+        n, total = await refund_all(s, aid)
+        await s.execute(delete(PartnerCommission).where(PartnerCommission.auction_id == aid))
+        audit(s, adm, "auction_refund", f"#{aid} refunded {n} users, {total} ETB")
+    return {"ok": True, "users_refunded": n, "total_refunded": float(total)}
 
-# ---------- Prizes ----------
+
+# ---------- prizes ----------
+class PrizeIn(BaseModel):
+    status: str
+
+
 @router.get("/prizes")
-async def admin_prizes(admin: AdminUser = Depends(require_perm("prizes")), status: str = Query("pending")):
+async def prizes(adm=Depends(need("read"))):
     async with SessionLocal() as s:
-        q = select(Auction).where(Auction.status == "ended", Auction.winner_id.is_not(None))
-        if status != "all":
-            q = q.where(Auction.prize_status == status)
-        q = q.order_by(desc(Auction.id))
-        auctions = (await s.execute(q)).scalars().all()
-    out = []
-    for a in auctions:
-        winner = await s.get(User, a.winner_id)
-        out.append({"auction_id": a.id, "title": a.title, "market_value": float(a.market_value),
-                    "lowest_unique_bid": a.lowest_unique_bid, "winner_id": a.winner_id,
-                    "winner_phone": winner.phone_number if winner else "unknown",
-                    "prize_status": a.prize_status, "ends_at": a.ends_at.isoformat() + "Z" if a.ends_at else None})
-    return out
+        rows = (await s.execute(select(Auction, User.phone_number).join(User, User.id == Auction.winner_id)
+                                .where(Auction.status == "ended").order_by(Auction.id.desc()))).all()
+    return [{**aout(a), "winner_phone": ph} for a, ph in rows]
 
-class PrizeUpdate(BaseModel):
-    prize_status: str = Field(pattern="^(pending|contacted|delivered)$")
 
-@router.post("/prizes/{aid}")
-async def admin_update_prize(aid: int, body: PrizeUpdate, admin: AdminUser = Depends(require_perm("prizes")), request: Request = None):
+@router.post("/auctions/{aid}/prize")
+async def set_prize(aid: int, b: PrizeIn, adm=Depends(need("prize"))):
+    if b.status not in ("pending", "contacted", "delivered"): raise HTTPException(400, "Bad status")
     async with SessionLocal() as s, s.begin():
         a = await s.get(Auction, aid)
-        if not a: raise HTTPException(404, "Auction not found")
-        a.prize_status = body.prize_status
-        await log_audit(admin.username, "prize_update", f"id={aid} status={body.prize_status}", await get_client_ip(request))
+        if not a or a.winner_id is None: raise HTTPException(404, "No winner for this auction")
+        a.prize_status = b.status
+        audit(s, adm, "prize_status", f"#{aid} -> {b.status}")
     return {"ok": True}
 
-# ---------- Users ----------
-@router.get("/users")
-async def admin_users(
-    admin: AdminUser = Depends(require_perm("users")),
-    q: str = Query(""),
-    blocked: bool | None = Query(None),
-    limit: int = Query(50, le=200),
-    offset: int = Query(0, ge=0)
-):
-    async with SessionLocal() as s:
-        query = select(User).order_by(desc(User.id))
-        if q:
-            query = query.where(User.phone_number.ilike(f"%{q}%"))
-        if blocked is not None:
-            query = query.join(UserFlag, User.id == UserFlag.user_id, isouter=True).where(UserFlag.blocked == blocked)
-        query = query.limit(limit).offset(offset)
-        users = (await s.execute(query)).scalars().all()
-    out = []
-    for u in users:
-        flag = await s.get(UserFlag, u.id)
-        out.append({"id": u.id, "phone_number": u.phone_number, "wallet_balance": float(u.wallet_balance),
-                    "is_verified": u.is_verified, "blocked": flag.blocked if flag else False,
-                    "blocked_reason": flag.reason if flag else None, "created_at": u.created_at.isoformat() + "Z"})
-    return out
 
-class BlockUser(BaseModel):
+# ---------- commissions ----------
+@router.get("/commissions")
+async def commissions(adm=Depends(need("read"))):
+    async with SessionLocal() as s:
+        rows = (await s.execute(select(PartnerCommission.auction_id, Auction.title, func.count(PartnerCommission.id),
+                                       func.sum(PartnerCommission.platform_fee), func.sum(PartnerCommission.partner_share))
+                                .join(Auction, Auction.id == PartnerCommission.auction_id)
+                                .group_by(PartnerCommission.auction_id, Auction.title)
+                                .order_by(PartnerCommission.auction_id.desc()))).all()
+    return [{"auction_id": i, "title": t, "bids": c, "platform_fee": f(p), "partner_share": f(sh)} for i, t, c, p, sh in rows]
+
+
+# ---------- users ----------
+class BlockIn(BaseModel):
     blocked: bool
-    reason: str | None = None
+    reason: str = ""
+
+
+class AdjustIn(BaseModel):
+    amount: Decimal
+    reason: str = Field(min_length=3)
+
+
+@router.get("/users")
+async def users(q: str = "", adm=Depends(need("read"))):
+    async with SessionLocal() as s:
+        qq = select(User, UserFlag.blocked).outerjoin(UserFlag, UserFlag.user_id == User.id).order_by(User.id.desc()).limit(100)
+        if q.strip():
+            qq = qq.where(User.phone_number.contains(q.strip()))
+        rows = (await s.execute(qq)).all()
+    return [{"id": u.id, "phone_number": u.phone_number, "wallet_balance": f(u.wallet_balance), "blocked": bool(bl),
+             "created_at": iso(u.created_at)} for u, bl in rows]
+
 
 @router.post("/users/{uid}/block")
-async def admin_block_user(uid: int, body: BlockUser, admin: AdminUser = Depends(require_perm("users")), request: Request = None):
+async def block_user(uid: int, b: BlockIn, adm=Depends(need("users"))):
     async with SessionLocal() as s, s.begin():
-        u = await s.get(User, uid)
-        if not u: raise HTTPException(404, "User not found")
-        flag = await s.get(UserFlag, uid)
-        if not flag:
-            flag = UserFlag(user_id=uid)
-            s.add(flag)
-        flag.blocked = body.blocked
-        flag.reason = body.reason
-        flag.updated_by = admin.username
-        flag.updated_at = utcnow()
-        await log_audit(admin.username, "user_block", f"id={uid} blocked={body.blocked}", await get_client_ip(request))
+        if not await s.get(User, uid): raise HTTPException(404, "Not found")
+        fl = await s.get(UserFlag, uid)
+        if not fl:
+            fl = UserFlag(user_id=uid)
+            s.add(fl)
+        fl.blocked, fl.reason, fl.updated_by, fl.updated_at = b.blocked, b.reason, adm["username"], utcnow()
+        audit(s, adm, "user_block" if b.blocked else "user_unblock", f"user {uid}: {b.reason}")
     return {"ok": True}
 
-class WalletAdjust(BaseModel):
-    amount: Decimal
-    note: str = "admin adjustment"
 
-@router.post("/users/{uid}/adjust-wallet")
-async def admin_adjust_wallet(uid: int, body: WalletAdjust, admin: AdminUser = Depends(require_perm("users")), request: Request = None):
+@router.post("/users/{uid}/adjust")
+async def adjust_wallet(uid: int, b: AdjustIn, adm=Depends(need("finance"))):
+    if b.amount == 0: raise HTTPException(400, "Amount cannot be zero")
     async with SessionLocal() as s, s.begin():
-        u = await s.get(User, uid)
-        if not u: raise HTTPException(404, "User not found")
-        u = (await s.execute(select(User).where(User.id == uid).with_for_update())).scalar_one()
-        u.wallet_balance = u.wallet_balance + body.amount
-        ref = f"adj-{admin.username}-{dt.datetime.utcnow().timestamp()}"
-        s.add(WalletTransaction(user_id=uid, kind="admin_adjust", amount=body.amount, balance_after=u.wallet_balance, reference=ref))
-        await log_audit(admin.username, "wallet_adjust", f"id={uid} amount={body.amount} note={body.note}", await get_client_ip(request))
-    return {"ok": True, "new_balance": float(u.wallet_balance)}
+        u = (await s.execute(select(User).where(User.id == uid).with_for_update())).scalar_one_or_none()
+        if not u: raise HTTPException(404, "Not found")
+        if u.wallet_balance + b.amount < 0: raise HTTPException(409, "Balance cannot go negative")
+        u.wallet_balance = u.wallet_balance + b.amount
+        s.add(WalletTransaction(user_id=uid, kind="admin_adjust", amount=b.amount, balance_after=u.wallet_balance,
+                                reference=f"adj-{secrets.token_hex(8)}", note=b.reason))
+        audit(s, adm, "wallet_adjust", f"user {uid}: {b.amount} ETB ({b.reason})")
+        bal = f(u.wallet_balance)
+    return {"ok": True, "wallet_balance": bal}
 
-# ---------- Payments ----------
+
+# ---------- payments ----------
 @router.get("/payments")
-async def admin_payments(
-    admin: AdminUser = Depends(require_perm("payments")),
-    status: str = Query("pending"),
-    provider: str | None = Query(None),
-    limit: int = Query(50, le=200),
-    offset: int = Query(0, ge=0)
-):
+async def payments_list(status: str = "", adm=Depends(need("read"))):
     async with SessionLocal() as s:
-        query = select(PaymentIntent).order_by(desc(PaymentIntent.created_at))
-        if status != "all":
-            query = query.where(PaymentIntent.status == status)
-        if provider:
-            query = query.where(PaymentIntent.provider == provider)
-        query = query.limit(limit).offset(offset)
-        payments = (await s.execute(query)).scalars().all()
-    out = []
-    for p in payments:
-        user = await s.get(User, p.user_id)
-        out.append({"id": p.id, "tx_ref": p.tx_ref, "provider": p.provider, "amount": float(p.amount),
-                    "status": p.status, "failure_reason": p.failure_reason, "user_id": p.user_id,
-                    "user_phone": user.phone_number if user else "unknown", "created_at": p.created_at.isoformat() + "Z"})
-    return out
+        qq = select(PaymentIntent, User.phone_number).join(User, User.id == PaymentIntent.user_id).order_by(PaymentIntent.id.desc()).limit(100)
+        if status: qq = qq.where(PaymentIntent.status == status)
+        rows = (await s.execute(qq)).all()
+    return [{"id": p.id, "phone": ph, "provider": p.provider, "tx_ref": p.tx_ref, "amount": f(p.amount),
+             "status": p.status, "failure_reason": p.failure_reason, "auction_id": p.auction_id,
+             "created_at": iso(p.created_at)} for p, ph in rows]
 
-class PaymentResolve(BaseModel):
-    action: str = Field(pattern="^(approve|reject)$")
-    reason: str | None = None
 
-@router.post("/payments/{tx_ref}/resolve")
-async def admin_resolve_payment(tx_ref: str, body: PaymentResolve, admin: AdminUser = Depends(require_perm("payments")), request: Request = None):
+@router.post("/payments/{pid}/approve")
+async def approve_payment(pid: int, adm=Depends(need("finance"))):
+    """Credits the wallet and, for a bid-checkout, places the pending bids (same safe-fallback as the webhook)."""
+    async with SessionLocal() as s:
+        p = await s.get(PaymentIntent, pid)
+    if not p: raise HTTPException(404, "Not found")
+    if p.status == "confirmed": raise HTTPException(409, "Already confirmed")
+    out = await payments.confirm_payment(p.tx_ref, allow_failed=True)
     async with SessionLocal() as s, s.begin():
-        pi = (await s.execute(select(PaymentIntent).where(PaymentIntent.tx_ref == tx_ref).with_for_update())).scalar_one_or_none()
-        if not pi: raise HTTPException(404, "Payment intent not found")
-        if pi.status != "pending":
-            raise HTTPException(409, "Already resolved")
-        if body.action == "approve":
-            from payments import process_wallet_deposit
-            await process_wallet_deposit(s, pi.user_id, pi.amount, f"pi-{pi.tx_ref}")
-            pi.status = "confirmed"
-        else:
-            pi.status = "failed"
-            pi.failure_reason = body.reason or "manually rejected by admin"
-        await log_audit(admin.username, "payment_resolve", f"tx_ref={tx_ref} action={body.action}", await get_client_ip(request))
+        audit(s, adm, "payment_approve", f"{p.tx_ref} {p.amount} ETB bids_placed={out['bids_placed']}")
+    return {"ok": True, **out}
+
+
+@router.post("/payments/{pid}/reject")
+async def reject_payment(pid: int, adm=Depends(need("finance"))):
+    async with SessionLocal() as s, s.begin():
+        p = (await s.execute(select(PaymentIntent).where(PaymentIntent.id == pid).with_for_update())).scalar_one_or_none()
+        if not p: raise HTTPException(404, "Not found")
+        if p.status != "pending": raise HTTPException(409, "Only pending payments can be rejected")
+        p.status, p.failure_reason = "failed", f"rejected by {adm['username']}"
+        audit(s, adm, "payment_reject", p.tx_ref)
     return {"ok": True}
+
+
+@router.post("/payments/{pid}/recheck")
+async def recheck_payment(pid: int, adm=Depends(need("finance"))):
+    async with SessionLocal() as s:
+        p = await s.get(PaymentIntent, pid)
+    if not p: raise HTTPException(404, "Not found")
+    if p.status == "pending":
+        verdict = await payments.verify_with_provider(p.tx_ref, p.provider)  # STUB until you implement it
+        if verdict == "success":
+            await payments.confirm_payment(p.tx_ref)
+        elif verdict == "failed":
+            await payments.mark_failed(p.tx_ref, None, "provider reported failure")
+    async with SessionLocal() as s:
+        p = await s.get(PaymentIntent, pid)
+    return {"status": p.status, "note": "Provider verification is a STUB until payments.verify_with_provider is implemented."}
+
+
+@router.get("/audit")
+async def audit_log(adm=Depends(need("read"))):
+    async with SessionLocal() as s:
+        rows = (await s.execute(select(AdminAuditLog).order_by(AdminAuditLog.id.desc()).limit(200))).scalars().all()
+    return [{"id": r.id, "admin": r.admin_username, "action": r.action, "detail": r.detail, "ip": r.ip, "at": iso(r.created_at)} for r in rows]
