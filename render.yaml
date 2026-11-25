@@ -20,7 +20,6 @@ services:
         generateValue: true
       - key: DEV_MODE
         value: "0"
-    # Auto-deploy on push to main
     autoDeploy: true
 
   # Background worker (timer_loop for auction resolution)
@@ -46,7 +45,6 @@ services:
           envVarKey: JWT_SECRET
       - key: DEV_MODE
         value: "0"
-    # Auto-deploy on push to main
     autoDeploy: true
 
   # Cron job to keep service awake (pings every 10 min)
@@ -65,13 +63,11 @@ services:
           envVarKey: RENDER_EXTERNAL_HOSTNAME
 
 databases:
-  # Free PostgreSQL (90 days, then $7/mo)
   - name: lowbid-db
     plan: free
     region: frankfurt
     postgresMajorVersion: 16
 
-  # Free Redis (persistent, no sleep)
   - name: lowbid-redis
     plan: free
     region: frankfurt
