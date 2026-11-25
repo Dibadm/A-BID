@@ -1,0 +1,77 @@
+services:
+  # Web service (FastAPI + WebSocket)
+  - type: web
+    name: lowbid-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/auctions
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lowbid-db
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: lowbid-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEV_MODE
+        value: "0"
+    # Auto-deploy on push to main
+    autoDeploy: true
+
+  # Background worker (timer_loop for auction resolution)
+  - type: worker
+    name: lowbid-timer
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    startCommand: python -c "import asyncio, main; asyncio.run(main.timer_loop())"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lowbid-db
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: lowbid-redis
+          property: connectionString
+      - key: JWT_SECRET
+        fromService:
+          name: lowbid-web
+          envVarKey: JWT_SECRET
+      - key: DEV_MODE
+        value: "0"
+    # Auto-deploy on push to main
+    autoDeploy: true
+
+  # Cron job to keep service awake (pings every 10 min)
+  - type: cron
+    name: lowbid-keepalive
+    schedule: "*/10 * * * *"
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    startCommand: python -c "import httpx, os; httpx.get(f'https://{os.environ[\"RENDER_EXTERNAL_HOSTNAME\"]}/api/auctions', timeout=10)"
+    envVars:
+      - key: RENDER_EXTERNAL_HOSTNAME
+        fromService:
+          name: lowbid-web
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+
+databases:
+  # Free PostgreSQL (90 days, then $7/mo)
+  - name: lowbid-db
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: 16
+
+  # Free Redis (persistent, no sleep)
+  - name: lowbid-redis
+    plan: free
+    region: frankfurt
